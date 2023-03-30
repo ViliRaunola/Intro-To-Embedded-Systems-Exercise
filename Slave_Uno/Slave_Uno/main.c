@@ -15,6 +15,7 @@
 #include <util/delay.h>
 #include <util/setbaud.h>
 #include <stdio.h>
+#include "lcd.h" // Source: From the provided course material
 
 /* USART_... Functions are for 
 communicating between the Arduino and the computer through the USB.
@@ -67,11 +68,18 @@ int main(void)
 	stdout = &uart_output;
 	stdin = &uart_input;
 	
+	// Initializing the LCD, cursor off, lcd cleared
+	lcd_init(LCD_DISP_ON);
+	lcd_clrscr();
+	
+	//Testing the screen, can be deteleted safely
+	lcd_puts("Testing!!!!");
+	
     while (1) 
     {
 		// This is for testing the printf function. Can be safely removed!
-		printf("Hello World\n\r");
-		_delay_ms(10000);
+		//printf("Hello World\n\r");
+		//_delay_ms(10000);
     }
 }
 
