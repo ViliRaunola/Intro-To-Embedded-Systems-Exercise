@@ -15,11 +15,17 @@
 #include <util/delay.h>
 #include <util/setbaud.h>
 #include <stdio.h>
+#include <avr/interrupt.h>
 #include "lcd.h" // Source: From the provided course material
 
-/* USART_... Functions are for 
+/*USART*/
+/*Source from course material*/
+
+/* 
+These functions are for 
 communicating between the Arduino and the computer through the USB.
-Can be used by printf();. */
+Can be used by printf();. 
+*/
 
 static void
 USART_Init( uint16_t ubrr)
@@ -60,9 +66,49 @@ USART_Receive( FILE *stream)
 FILE uart_output = FDEV_SETUP_STREAM(USART_Transmit, NULL, _FDEV_SETUP_WRITE);
 FILE uart_input = FDEV_SETUP_STREAM(NULL, USART_Receive, _FDEV_SETUP_READ);
 
+/*BUZZER*/
+/*Source from course material*/
+
+// Runs when compare matches. Resets the timer back to 0.
+ISR(TIMER1_COMPA_vect){
+	TCNT1 = 0;
+}
+
+// Solves the equation found on Uno manual p.128.
+int topCalculation(int prescale, int frequency)
+{
+	return (F_CPU / 2 * prescale * frequency);
+}
+
+
 
 int main(void)
 {
+	// Pin 9 for buzzer
+	DDRB |= (1 << PB1);
+	
+	// Enable interruts, for buzzer.
+	sei();
+	
+	// Initialize counter
+	TCCR1A = 0; // Resetting entire register
+	TCCR1B = 0; // Resetting entire register
+	TCNT1 = 0; // Timer to 0
+	TCCR1A |= (1 << COM1A0); // Toggle compare match on
+	
+	// To mode 9, PWM, Phase and Frequency Correct
+	TCCR1B |= (1 << WGM13);
+	TCCR1A |= (1 << WGM10);
+	
+	// Enabling interrupts for timer 1, output compare A
+	TIMSK1 |= (1 << OCIE1A); 
+	
+	/* 
+	Setting the right frequency for the buzzer.
+	Using 500 MHz, pre-scaler 1.
+	*/
+	OCR1A = topCalculation(1, 700);
+	
     // Initializing the USART
 	USART_Init(MYUBRR);
 	stdout = &uart_output;
@@ -72,14 +118,24 @@ int main(void)
 	lcd_init(LCD_DISP_ON);
 	lcd_clrscr();
 	
-	//Testing the screen, can be deteleted safely
-	lcd_puts("Testing!!!!");
 	
     while (1) 
     {
 		// This is for testing the printf function. Can be safely removed!
 		//printf("Hello World\n\r");
-		//_delay_ms(10000);
+		
+		// Starting the counter which starts the buzzer with no pre-scaling.
+		TCCR1B |= (1 << CS10);
+		lcd_clrscr();
+		lcd_puts("Buzzer on!");
+		_delay_ms(500); // Buzzer on for .5s
+		
+		
+		// Turning the counter off which turns the buzzer off.
+		TCCR1B &= ~(1 << CS10);
+		lcd_clrscr();
+		lcd_puts("Buzzer off!");
+		_delay_ms(10000); // Buzzer off for 10s
     }
 }
 
