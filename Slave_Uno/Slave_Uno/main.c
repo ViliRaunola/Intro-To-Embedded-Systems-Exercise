@@ -97,7 +97,7 @@ int main(void)
 	SPCR |= (1 << SPR0);
 	
 	// To this array data is saved from Master in SPI communication
-	unsigned char spi_data_to_receive[30];
+	unsigned char spi_data_to_receive[40];
 	
 	// Enable interruts, for buzzer.
 	sei();
@@ -133,16 +133,19 @@ int main(void)
 	
     while (1) 
     {
-		// This is for testing the printf function. Can be safely removed!
-		//printf("Hello World\n\r");
 		
 		for (int8_t i = 0; i < sizeof(spi_data_to_receive); i++)
 		{	
+			// Checking SPI status register for reception complete
+			while(!(SPSR & (1 << SPIF))) {;}
 			// Getting the data from the register (Data from Mega)
 			spi_data_to_receive[i] = SPDR;
 		}
-		
+		printf("Data received from master Mega:\n\r");
 		printf(spi_data_to_receive);
+		
+		lcd_clrscr();
+		lcd_puts(spi_data_to_receive);
     }
 }
 

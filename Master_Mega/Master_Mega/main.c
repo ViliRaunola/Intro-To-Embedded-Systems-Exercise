@@ -76,7 +76,7 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	unsigned char spi_data_to_send[40] = "From Master Mega to slave Uno\n\r";
+	unsigned char spi_data_to_send[40] = "Hello World\n\r";
 	
     while (1) 
     {
@@ -94,7 +94,7 @@ int main(void)
 			_delay_us(10);
 		}
 		PORTB |= (1 << PB0); // SS high --> disable slave device
-		printf("Data has been sent. Sleeping for 5s");
+		printf("Data has been sent from master to slave. Sleeping for 5s\n\r");
 		_delay_ms(5000);
     }
 }
