@@ -94,6 +94,8 @@ int main(void)
 			_delay_us(10);
 		}
 		PORTB |= (1 << PB0); // SS high --> disable slave device
+		printf("Data has been sent. Sleeping for 5s");
+		_delay_ms(5000);
     }
 }
 
