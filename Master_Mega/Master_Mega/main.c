@@ -67,11 +67,35 @@ int main(void)
 	stdout = &uart_output;
 	stdin = &uart_input;
 	
+	// Setting SS, MOSI and SCL as outputs
+	DDRB |= (1 << PB0) | (1 << PB1) | (1 << PB2);
+	
+	// Set the SPI on and make the mega master
+	SPCR |= (1 << SPE) | (1 << MSTR);
+	
+	// Set SPI clock to 1 MHz
+	SPCR |= (1 << SPR0);
+	
+	unsigned char spi_data_to_send[40] = "Hello World\n\r";
+	
     while (1) 
     {
-		// This is for testing the printf function. Can be safely removed!
-		printf("Hello World\n\r");
-		_delay_ms(10000);
+		PORTB &= ~(1 << PB0); // SS low --> enables slave device
+		
+		//Sending the data to the slave
+		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
+		{
+			// Sending one byte at a time
+			SPDR = spi_data_to_send[i]; 
+			// Delays are added to prevent things happening too fast
+			_delay_us(10);
+			// Checking SPI status register if the transmit is complete
+			while (!(SPSR & (1 << SPIF))) {;}
+			_delay_us(10);
+		}
+		PORTB |= (1 << PB0); // SS high --> disable slave device
+		printf("Data has been sent from master to slave. Sleeping for 5s\n\r");
+		_delay_ms(5000);
     }
 }
 

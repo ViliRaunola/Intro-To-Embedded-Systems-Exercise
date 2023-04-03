@@ -87,6 +87,18 @@ int main(void)
 	// Pin 9 for buzzer
 	DDRB |= (1 << PB1);
 	
+	// Setting MISO as output
+	DDRB |= (1 << PB4);
+	
+	// Set the SPI on
+	SPCR |= (1 << SPE);
+	
+	// Set SPI clock to 1 MHz
+	SPCR |= (1 << SPR0);
+	
+	// To this array data is saved from Master in SPI communication
+	unsigned char spi_data_to_receive[40];
+	
 	// Enable interruts, for buzzer.
 	sei();
 	
@@ -121,21 +133,19 @@ int main(void)
 	
     while (1) 
     {
-		// This is for testing the printf function. Can be safely removed!
-		//printf("Hello World\n\r");
 		
-		// Starting the counter which starts the buzzer with no pre-scaling.
-		TCCR1B |= (1 << CS10);
+		for (int8_t i = 0; i < sizeof(spi_data_to_receive); i++)
+		{	
+			// Checking SPI status register for reception complete
+			while(!(SPSR & (1 << SPIF))) {;}
+			// Getting the data from the register (Data from Mega)
+			spi_data_to_receive[i] = SPDR;
+		}
+		printf("Data received from master Mega:\n\r");
+		printf(spi_data_to_receive);
+		
 		lcd_clrscr();
-		lcd_puts("Buzzer on!");
-		_delay_ms(500); // Buzzer on for .5s
-		
-		
-		// Turning the counter off which turns the buzzer off.
-		TCCR1B &= ~(1 << CS10);
-		lcd_clrscr();
-		lcd_puts("Buzzer off!");
-		_delay_ms(10000); // Buzzer off for 10s
+		lcd_puts(spi_data_to_receive);
     }
 }
 
