@@ -67,7 +67,7 @@ send_command_to_slave(unsigned char *spi_data_to_send)
 	PORTB &= ~(1 << PB0); // SS low --> enables slave device
 	
 	//Sending the data to the slave
-	for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
+	for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
 	{
 		// Sending one byte at a time
 		SPDR = spi_data_to_send[i];
@@ -78,7 +78,6 @@ send_command_to_slave(unsigned char *spi_data_to_send)
 		_delay_us(10);
 	}
 	PORTB |= (1 << PB0); // SS high --> disable slave device
-	printf(spi_data_to_send);
 }
 
 FILE uart_output = FDEV_SETUP_STREAM(USART_Transmit, NULL, _FDEV_SETUP_WRITE);
@@ -106,15 +105,23 @@ int main(void)
     while (1) 
     {
 		strcpy(spi_data_to_send, "1");
+		send_command_to_slave(spi_data_to_send);
 		printf("Buzzer on command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
 		strcpy(spi_data_to_send, "2");
+		send_command_to_slave(spi_data_to_send);
 		printf("Buzzer off command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
 		strcpy(spi_data_to_send, "3");
+		send_command_to_slave(spi_data_to_send);
 		printf("Print to screen command sent. Sleeping for 5s\n\r");
+		_delay_ms(5000);
+		
+		strcpy(spi_data_to_send, "4");
+		send_command_to_slave(spi_data_to_send);
+		printf("Clear screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
     }
 }

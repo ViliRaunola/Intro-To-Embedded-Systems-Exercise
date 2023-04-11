@@ -15,6 +15,7 @@
 #define BUZZER_ON 1
 #define BUZZER_OFF 2
 #define DISPLAY 3
+#define DISPLAY_CLEAR 4
 
 
 #include <avr/io.h>
@@ -150,8 +151,7 @@ int main(void)
 			// Getting the data from the register (Data from Mega)
 			spi_data_to_receive[i] = SPDR;
 		}
-		printf("Data received from master Mega:\n\r");
-		printf(spi_data_to_receive);
+		printf("Command: %s. From Mega\n\r", spi_data_to_receive);
 		
 		// Converting received string to integer
 		sscanf(spi_data_to_receive, "%d", &state);
@@ -173,6 +173,9 @@ int main(void)
 			case DISPLAY:
 				lcd_clrscr();
 				lcd_puts("Hello world!");
+				break;
+			case DISPLAY_CLEAR:
+				lcd_clrscr();
 				break;
 			
 			default:
