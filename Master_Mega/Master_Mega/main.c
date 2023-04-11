@@ -15,6 +15,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <util/setbaud.h>
+#include <string.h>
 #include <stdio.h>
 
 /* USART_... Functions are for 
@@ -78,7 +79,6 @@ send_command_to_slave(unsigned char *spi_data_to_send)
 	}
 	PORTB |= (1 << PB0); // SS high --> disable slave device
 	printf(spi_data_to_send);
-	return 0;
 }
 
 FILE uart_output = FDEV_SETUP_STREAM(USART_Transmit, NULL, _FDEV_SETUP_WRITE);
@@ -106,56 +106,14 @@ int main(void)
     while (1) 
     {
 		strcpy(spi_data_to_send, "1");
-		PORTB &= ~(1 << PB0); // SS low --> enables slave device
-		
-		//Sending the data to the slave
-		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
-		{
-			// Sending one byte at a time
-			SPDR = spi_data_to_send[i];
-			// Delays are added to prevent things happening too fast
-			_delay_us(10);
-			// Checking SPI status register if the transmit is complete
-			while (!(SPSR & (1 << SPIF))) {;}
-			_delay_us(10);
-		}
-		PORTB |= (1 << PB0); // SS high --> disable slave device
 		printf("Buzzer on command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
 		strcpy(spi_data_to_send, "2");
-		PORTB &= ~(1 << PB0); // SS low --> enables slave device
-		
-		//Sending the data to the slave
-		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
-		{
-			// Sending one byte at a time
-			SPDR = spi_data_to_send[i];
-			// Delays are added to prevent things happening too fast
-			_delay_us(10);
-			// Checking SPI status register if the transmit is complete
-			while (!(SPSR & (1 << SPIF))) {;}
-			_delay_us(10);
-		}
-		PORTB |= (1 << PB0); // SS high --> disable slave device
 		printf("Buzzer off command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
 		strcpy(spi_data_to_send, "3");
-		PORTB &= ~(1 << PB0); // SS low --> enables slave device
-		
-		//Sending the data to the slave
-		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
-		{
-			// Sending one byte at a time
-			SPDR = spi_data_to_send[i];
-			// Delays are added to prevent things happening too fast
-			_delay_us(10);
-			// Checking SPI status register if the transmit is complete
-			while (!(SPSR & (1 << SPIF))) {;}
-			_delay_us(10);
-		}
-		PORTB |= (1 << PB0); // SS high --> disable slave device
 		printf("Print to screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
     }
