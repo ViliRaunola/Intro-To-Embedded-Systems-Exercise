@@ -9,11 +9,13 @@
 #define FOSC 16000000UL
 #define BAUD 9600
 #define MYUBRR (FOSC/16/BAUD-1)
+#define CHAR_ARRAY_SIZE 40
 
 
 #include <avr/io.h>
 #include <util/delay.h>
 #include <util/setbaud.h>
+#include <string.h>
 #include <stdio.h>
 
 /* USART_... Functions are for 
@@ -56,6 +58,28 @@ USART_Receive( FILE *stream)
 	return UDR0;
 }
 
+/*
+This function sends the command in the char array to the slave Uno to be executed using SPI.
+*/
+void
+send_command_to_slave(unsigned char *spi_data_to_send)
+{
+	PORTB &= ~(1 << PB0); // SS low --> enables slave device
+	
+	//Sending the data to the slave
+	for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
+	{
+		// Sending one byte at a time
+		SPDR = spi_data_to_send[i];
+		// Delays are added to prevent things happening too fast
+		_delay_us(10);
+		// Checking SPI status register if the transmit is complete
+		while (!(SPSR & (1 << SPIF))) {;}
+		_delay_us(10);
+	}
+	PORTB |= (1 << PB0); // SS high --> disable slave device
+}
+
 FILE uart_output = FDEV_SETUP_STREAM(USART_Transmit, NULL, _FDEV_SETUP_WRITE);
 FILE uart_input = FDEV_SETUP_STREAM(NULL, USART_Receive, _FDEV_SETUP_READ);
 
@@ -76,25 +100,28 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	unsigned char spi_data_to_send[40] = "Hello World\n\r";
+	unsigned char spi_data_to_send[CHAR_ARRAY_SIZE] = "1";
 	
     while (1) 
     {
-		PORTB &= ~(1 << PB0); // SS low --> enables slave device
+		strcpy(spi_data_to_send, "1");
+		send_command_to_slave(spi_data_to_send);
+		printf("Buzzer on command sent. Sleeping for 5s\n\r");
+		_delay_ms(5000);
 		
-		//Sending the data to the slave
-		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
-		{
-			// Sending one byte at a time
-			SPDR = spi_data_to_send[i]; 
-			// Delays are added to prevent things happening too fast
-			_delay_us(10);
-			// Checking SPI status register if the transmit is complete
-			while (!(SPSR & (1 << SPIF))) {;}
-			_delay_us(10);
-		}
-		PORTB |= (1 << PB0); // SS high --> disable slave device
-		printf("Data has been sent from master to slave. Sleeping for 5s\n\r");
+		strcpy(spi_data_to_send, "2");
+		send_command_to_slave(spi_data_to_send);
+		printf("Buzzer off command sent. Sleeping for 5s\n\r");
+		_delay_ms(5000);
+		
+		strcpy(spi_data_to_send, "3");
+		send_command_to_slave(spi_data_to_send);
+		printf("Print to screen command sent. Sleeping for 5s\n\r");
+		_delay_ms(5000);
+		
+		strcpy(spi_data_to_send, "4");
+		send_command_to_slave(spi_data_to_send);
+		printf("Clear screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
     }
 }

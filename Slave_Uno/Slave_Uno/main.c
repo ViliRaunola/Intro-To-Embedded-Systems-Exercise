@@ -9,6 +9,13 @@
 #define FOSC 16000000UL
 #define BAUD 9600
 #define MYUBRR (FOSC/16/BAUD-1)
+#define CHAR_ARRAY_SIZE 40
+
+/*Definitions to switch cases*/
+#define BUZZER_ON 1
+#define BUZZER_OFF 2
+#define DISPLAY 3
+#define DISPLAY_CLEAR 4
 
 
 #include <avr/io.h>
@@ -16,6 +23,7 @@
 #include <util/setbaud.h>
 #include <stdio.h>
 #include <avr/interrupt.h>
+#include <string.h>
 #include "lcd.h" // Source: From the provided course material
 
 /*USART*/
@@ -97,7 +105,8 @@ int main(void)
 	SPCR |= (1 << SPR0);
 	
 	// To this array data is saved from Master in SPI communication
-	unsigned char spi_data_to_receive[40];
+	unsigned char spi_data_to_receive[CHAR_ARRAY_SIZE];
+	int state; 
 	
 	// Enable interruts, for buzzer.
 	sei();
@@ -117,7 +126,7 @@ int main(void)
 	
 	/* 
 	Setting the right frequency for the buzzer.
-	Using 500 MHz, pre-scaler 1.
+	Using 700 MHz, pre-scaler 1.
 	*/
 	OCR1A = topCalculation(1, 700);
 	
@@ -131,21 +140,49 @@ int main(void)
 	lcd_clrscr();
 	
 	
+	
     while (1) 
     {
 		
-		for (int8_t i = 0; i < sizeof(spi_data_to_receive); i++)
+		for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
 		{	
 			// Checking SPI status register for reception complete
 			while(!(SPSR & (1 << SPIF))) {;}
 			// Getting the data from the register (Data from Mega)
 			spi_data_to_receive[i] = SPDR;
 		}
-		printf("Data received from master Mega:\n\r");
-		printf(spi_data_to_receive);
+		printf("Command: %s. From Mega\n\r", spi_data_to_receive);
 		
-		lcd_clrscr();
-		lcd_puts(spi_data_to_receive);
+		// Converting received string to integer
+		sscanf(spi_data_to_receive, "%d", &state);
+		
+		/* 
+		The command to run is received from the mega.
+		The correct action is decided in the switch case 
+		*/
+		switch(state)
+		{
+			case BUZZER_ON:
+				TCCR1B |= (1 << CS10);
+				break;
+			
+			case BUZZER_OFF:
+				TCCR1B &= ~(1 << CS10);
+				break;
+			
+			case DISPLAY:
+				lcd_clrscr();
+				lcd_puts("Hello world!");
+				break;
+			case DISPLAY_CLEAR:
+				lcd_clrscr();
+				break;
+			
+			default:
+				// Add something
+				break;
+		}
+		
     }
 }
 
