@@ -77,6 +77,7 @@ send_command_to_slave(unsigned char *spi_data_to_send)
 		_delay_us(10);
 	}
 	PORTB |= (1 << PB0); // SS high --> disable slave device
+	printf(spi_data_to_send);
 	return 0;
 }
 
@@ -104,17 +105,57 @@ int main(void)
 	
     while (1) 
     {
-		send_command_to_slave(spi_data_to_send);
+		strcpy(spi_data_to_send, "1");
+		PORTB &= ~(1 << PB0); // SS low --> enables slave device
+		
+		//Sending the data to the slave
+		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
+		{
+			// Sending one byte at a time
+			SPDR = spi_data_to_send[i];
+			// Delays are added to prevent things happening too fast
+			_delay_us(10);
+			// Checking SPI status register if the transmit is complete
+			while (!(SPSR & (1 << SPIF))) {;}
+			_delay_us(10);
+		}
+		PORTB |= (1 << PB0); // SS high --> disable slave device
 		printf("Buzzer on command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
 		strcpy(spi_data_to_send, "2");
-		send_command_to_slave(spi_data_to_send);
+		PORTB &= ~(1 << PB0); // SS low --> enables slave device
+		
+		//Sending the data to the slave
+		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
+		{
+			// Sending one byte at a time
+			SPDR = spi_data_to_send[i];
+			// Delays are added to prevent things happening too fast
+			_delay_us(10);
+			// Checking SPI status register if the transmit is complete
+			while (!(SPSR & (1 << SPIF))) {;}
+			_delay_us(10);
+		}
+		PORTB |= (1 << PB0); // SS high --> disable slave device
 		printf("Buzzer off command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
 		strcpy(spi_data_to_send, "3");
-		send_command_to_slave(spi_data_to_send);
+		PORTB &= ~(1 << PB0); // SS low --> enables slave device
+		
+		//Sending the data to the slave
+		for (int8_t i = 0; i < sizeof(spi_data_to_send); i++)
+		{
+			// Sending one byte at a time
+			SPDR = spi_data_to_send[i];
+			// Delays are added to prevent things happening too fast
+			_delay_us(10);
+			// Checking SPI status register if the transmit is complete
+			while (!(SPSR & (1 << SPIF))) {;}
+			_delay_us(10);
+		}
+		PORTB |= (1 << PB0); // SS high --> disable slave device
 		printf("Print to screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
     }
