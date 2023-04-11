@@ -9,6 +9,7 @@
 #define FOSC 16000000UL
 #define BAUD 9600
 #define MYUBRR (FOSC/16/BAUD-1)
+#define CHAR_ARRAY_SIZE 40
 
 
 #include <avr/io.h>
@@ -76,7 +77,7 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	unsigned char spi_data_to_send[40] = "Hello World\n\r";
+	unsigned char spi_data_to_send[CHAR_ARRAY_SIZE] = "buzzer_on";
 	
     while (1) 
     {
