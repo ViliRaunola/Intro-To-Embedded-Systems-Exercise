@@ -104,6 +104,11 @@ int main(void)
 	
     while (1) 
     {
+		strcpy(spi_data_to_send, "3: Moikka!");
+		send_command_to_slave(spi_data_to_send);
+		printf("Buzzer on command sent. Sleeping for 5s\n\r");
+		_delay_ms(5000);
+		
 		strcpy(spi_data_to_send, "1");
 		send_command_to_slave(spi_data_to_send);
 		printf("Buzzer on command sent. Sleeping for 5s\n\r");

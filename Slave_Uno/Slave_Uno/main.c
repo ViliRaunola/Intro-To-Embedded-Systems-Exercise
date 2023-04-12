@@ -153,8 +153,11 @@ int main(void)
 		}
 		printf("Command: %s. From Mega\n\r", spi_data_to_receive);
 		
-		// Converting received string to integer
-		sscanf(spi_data_to_receive, "%d", &state);
+		// Splitting the string using : so the command and payload can be separated
+		char *ptr_split = strtok(spi_data_to_receive, ":");
+		
+		// Converting command string to integer
+		sscanf(ptr_split, "%d", &state);
 		
 		/* 
 		The command to run is received from the mega.
