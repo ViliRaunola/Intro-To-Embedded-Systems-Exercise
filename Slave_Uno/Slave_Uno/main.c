@@ -12,6 +12,7 @@
 #define CHAR_ARRAY_SIZE 40
 
 /*Definitions to switch cases*/
+#define WAIT_FOR_COMMAND 0
 #define BUZZER_ON 1
 #define BUZZER_OFF 2
 #define DISPLAY 3
@@ -146,34 +147,37 @@ int main(void)
 	
     while (1) 
     {
-		
-		for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
-		{	
-			// Checking SPI status register for reception complete
-			while(!(SPSR & (1 << SPIF))) {;}
-			// Getting the data from the register (Data from Mega)
-			spi_data_to_receive[i] = SPDR;
-		}
-		printf("Command: <<%s>> From Mega\n\r", spi_data_to_receive);
-		
-		// Splitting the string using : so the command and payload can be separated
-		char *ptr_split = strtok(spi_data_to_receive, delimeter);
-		
-		// Converting command string to integer
-		sscanf(ptr_split, "%d", &state);
-		
 		/* 
 		The command to run is received from the mega.
 		The correct action is decided in the switch case 
 		*/
 		switch(state)
 		{
+			case WAIT_FOR_COMMAND:
+				for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
+				{
+					// Checking SPI status register for reception complete
+					while(!(SPSR & (1 << SPIF))) {;}
+					// Getting the data from the register (Data from Mega)
+					spi_data_to_receive[i] = SPDR;
+				}
+				printf("Command: <<%s>> From Mega\n\r", spi_data_to_receive);
+				
+				// Splitting the string using : so the command and payload can be separated
+				char *ptr_split = strtok(spi_data_to_receive, delimeter);
+				
+				// Converting command string to integer
+				sscanf(ptr_split, "%d", &state);
+				break;
+			
 			case BUZZER_ON:
 				TCCR1B |= (1 << CS10);
+				state = WAIT_FOR_COMMAND;
 				break;
 			
 			case BUZZER_OFF:
 				TCCR1B &= ~(1 << CS10);
+				state = WAIT_FOR_COMMAND;
 				break;
 			
 			case DISPLAY:
@@ -181,9 +185,11 @@ int main(void)
 				ptr_split = strtok(NULL, delimeter);
 				lcd_clrscr();
 				lcd_puts(ptr_split);
+				state = WAIT_FOR_COMMAND;
 				break;
 			case DISPLAY_CLEAR:
 				lcd_clrscr();
+				state = WAIT_FOR_COMMAND;
 				break;
 			
 			default:
