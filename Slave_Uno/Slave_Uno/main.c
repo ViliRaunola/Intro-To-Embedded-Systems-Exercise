@@ -84,9 +84,44 @@ ISR(TIMER1_COMPA_vect){
 }
 
 // Solves the equation found on Uno manual p.128.
-int topCalculation(int prescale, int frequency)
+int 
+topCalculation(int prescale, int frequency)
 {
 	return (F_CPU / 2 * prescale * frequency);
+}
+
+// Waits for the command to be sent from the mega
+void
+receive_command_from_mega(int *state, char *delimeter, char *payload)
+{
+	// To this array data is saved from Master in SPI communication
+	unsigned char spi_data_to_receive[CHAR_ARRAY_SIZE];
+	
+	int temp_state;
+	for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
+	{
+		// Checking SPI status register for reception complete
+		while(!(SPSR & (1 << SPIF))) {;}
+		// Getting the data from the register (Data from Mega)
+		spi_data_to_receive[i] = SPDR;
+	}
+	// Splitting the string using : so the command and payload can be separated
+	char *ptr_split = strtok(spi_data_to_receive, delimeter);
+	
+	// Converting command string to integer
+	sscanf(ptr_split, "%d", &temp_state);
+	
+	// Saving the command to state
+	*state = temp_state;
+	
+	// Getting the payload
+	ptr_split = strtok(NULL, delimeter);
+	
+	// Copying the payload if there was any
+	if(ptr_split != NULL) {
+		printf("Here");
+		strcpy(payload, ptr_split);
+	}
 }
 
 
@@ -105,12 +140,18 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	// To this array data is saved from Master in SPI communication
-	unsigned char spi_data_to_receive[CHAR_ARRAY_SIZE];
-	int state; 
+	// Storing the possible payload that comes with the command from Mega
+	unsigned char payload[CHAR_ARRAY_SIZE];
+	
+	/* 
+	The state of the Uno, used in the switch case structure. 
+	Is initialized as waiting for command since Uno just listens to Mega's commands.
+	*/
+	int state = WAIT_FOR_COMMAND; 
 	
 	// Delimeter for splitting the command and payload
 	char delimeter[2] = ":";
+	
 	
 	// Enable interruts, for buzzer.
 	sei();
@@ -143,8 +184,6 @@ int main(void)
 	lcd_init(LCD_DISP_ON);
 	lcd_clrscr();
 	
-	
-	
     while (1) 
     {
 		/* 
@@ -154,39 +193,28 @@ int main(void)
 		switch(state)
 		{
 			case WAIT_FOR_COMMAND:
-				for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
-				{
-					// Checking SPI status register for reception complete
-					while(!(SPSR & (1 << SPIF))) {;}
-					// Getting the data from the register (Data from Mega)
-					spi_data_to_receive[i] = SPDR;
-				}
-				printf("Command: <<%s>> From Mega\n\r", spi_data_to_receive);
-				
-				// Splitting the string using : so the command and payload can be separated
-				char *ptr_split = strtok(spi_data_to_receive, delimeter);
-				
-				// Converting command string to integer
-				sscanf(ptr_split, "%d", &state);
+				receive_command_from_mega(&state, delimeter, payload);
 				break;
 			
 			case BUZZER_ON:
+				// Turns the buzzer on
 				TCCR1B |= (1 << CS10);
 				state = WAIT_FOR_COMMAND;
 				break;
 			
 			case BUZZER_OFF:
+				// Turns the buzzer off
 				TCCR1B &= ~(1 << CS10);
 				state = WAIT_FOR_COMMAND;
 				break;
 			
 			case DISPLAY:
 				// Getting the next part aka the payload of command
-				ptr_split = strtok(NULL, delimeter);
 				lcd_clrscr();
-				lcd_puts(ptr_split);
+				lcd_puts(payload);
 				state = WAIT_FOR_COMMAND;
 				break;
+				
 			case DISPLAY_CLEAR:
 				lcd_clrscr();
 				state = WAIT_FOR_COMMAND;
