@@ -108,6 +108,9 @@ int main(void)
 	unsigned char spi_data_to_receive[CHAR_ARRAY_SIZE];
 	int state; 
 	
+	// Delimeter for splitting the command and payload
+	char delimeter[2] = ":";
+	
 	// Enable interruts, for buzzer.
 	sei();
 	
@@ -151,10 +154,10 @@ int main(void)
 			// Getting the data from the register (Data from Mega)
 			spi_data_to_receive[i] = SPDR;
 		}
-		printf("Command: %s. From Mega\n\r", spi_data_to_receive);
+		printf("Command: <<%s>> From Mega\n\r", spi_data_to_receive);
 		
 		// Splitting the string using : so the command and payload can be separated
-		char *ptr_split = strtok(spi_data_to_receive, ":");
+		char *ptr_split = strtok(spi_data_to_receive, delimeter);
 		
 		// Converting command string to integer
 		sscanf(ptr_split, "%d", &state);
@@ -174,8 +177,10 @@ int main(void)
 				break;
 			
 			case DISPLAY:
+				// Getting the next part aka the payload of command
+				ptr_split = strtok(NULL, delimeter);
 				lcd_clrscr();
-				lcd_puts("Hello world!");
+				lcd_puts(ptr_split);
 				break;
 			case DISPLAY_CLEAR:
 				lcd_clrscr();
