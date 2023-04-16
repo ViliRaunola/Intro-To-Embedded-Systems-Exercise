@@ -5,6 +5,15 @@ VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Master_Mega", "Master_Mega\Master_Mega.cproj", "{DCE6C7E3-EE26-4D79-826B-08594B9AD897}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{69A60F15-E756-465E-AF05-0525A7B4D907}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\Headers\delay.c = ..\..\Headers\delay.c
+		..\..\Headers\delay.h = ..\..\Headers\delay.h
+		..\..\Headers\keypad.c = ..\..\Headers\keypad.c
+		..\..\Headers\keypad.h = ..\..\Headers\keypad.h
+		..\..\Headers\stdutils.h = ..\..\Headers\stdutils.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR

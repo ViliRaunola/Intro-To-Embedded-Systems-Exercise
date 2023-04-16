@@ -10,13 +10,24 @@
 #define BAUD 9600
 #define MYUBRR (FOSC/16/BAUD-1)
 #define CHAR_ARRAY_SIZE 40
-
+#define PASSWORD "1234"
+#define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
 
 #include <avr/io.h>
 #include <util/delay.h>
 #include <util/setbaud.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include "keypad.h"
+
+
+
+
+
+
+
 
 /* USART_... Functions are for 
 communicating between the Arduino and the computer through the USB.
@@ -84,6 +95,45 @@ FILE uart_output = FDEV_SETUP_STREAM(USART_Transmit, NULL, _FDEV_SETUP_WRITE);
 FILE uart_input = FDEV_SETUP_STREAM(NULL, USART_Receive, _FDEV_SETUP_READ);
 
 
+
+//Function for motion detection
+static void
+motionSense(int sensePin){
+	
+	int sensorState = 0; // current state of pin
+	
+	while(1){
+		
+		//printf("Waiting for Motion\n");
+		
+		sensorState = (PINB & (1 << sensePin));
+		
+		if(sensorState != 0){
+			
+			printf("Motion Detected\n");
+			//Do Something;
+		}
+		sensorState = 0;
+		_delay_ms(1000);
+		
+	}
+	
+	
+}
+
+
+static void
+getPassword(){
+	
+	printf("Type Something: ");
+	char keyPressed;
+	KEYPAD_Init();
+	keyPressed = KEYPAD_GetKey();
+	printf("%c\n ", keyPressed);
+}
+
+
+
 int main(void)
 {
     // Initializing the USART
@@ -104,7 +154,7 @@ int main(void)
 	
     while (1) 
     {	
-		strcpy(spi_data_to_send, "1");
+		/*strcpy(spi_data_to_send, "1");
 		send_command_to_slave(spi_data_to_send);
 		printf("Buzzer on command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
@@ -123,6 +173,8 @@ int main(void)
 		send_command_to_slave(spi_data_to_send);
 		printf("Clear screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
+		*/
+		getPassword();
     }
 }
 
