@@ -125,13 +125,25 @@ motionSense(int sensePin){
 
 
 static void
-getPassword(){
+getPassword(unsigned char *user_input){
 	
 	printf("Type Something: ");
 	char keyPressed;
 	KEYPAD_Init();
 	keyPressed = KEYPAD_GetKey();
 	printf("%c\n\r", keyPressed);
+	
+	appendCharToCharArray(user_input, keyPressed);
+	printf("Current user input: %s\n\r", user_input);
+}
+
+// Appends a character to a character array
+void 
+appendCharToCharArray(unsigned char* array, char c) 
+{
+	int len = strlen(array);
+	array[len] = c;
+	array[len+1] = '\0';
 }
 
 
@@ -164,14 +176,22 @@ int main(void)
 	// Stores the data that is sent from Mega to  Uno
 	unsigned char spi_data_to_send[CHAR_ARRAY_SIZE] = "1";
 	
-	// 
+	// The user input from keypad is appended to this char array
+	unsigned char user_input[CHAR_ARRAY_SIZE];
 	
     while (1) 
     {	
 		switch(state)
 		{
 			case WAIT_MOVEMENT:
+				// Waiting for movement
 				motionSense(MOTION_SENSOR_PIN);
+				
+				// Movement detected --> sending message to lcd
+				strcpy(spi_data_to_send, "3:Insert password");
+				send_command_to_slave(spi_data_to_send);
+				
+				// Switching state to receive the password
 				state = KEYPAD_INPUT;
 				break;
 				
@@ -179,11 +199,12 @@ int main(void)
 				break;
 				
 			case KEYPAD_INPUT:
-				getPassword();
+				getPassword(user_input);
 				break;
 				
 			case STOP_TIMER:
 				break;
+				
 			default:
 				//add something here
 				break;
