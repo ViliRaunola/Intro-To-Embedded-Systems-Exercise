@@ -12,7 +12,6 @@
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
 #define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
-#define OK_BUTTON_CHAR 'A'
 
 /*Definitions to switch cases*/
 #define WAIT_MOVEMENT 0
@@ -157,24 +156,45 @@ appendCharToCharArray(unsigned char* array, char c)
 	array[len+1] = '\0';
 }
 
+
+// Creating the payload to print given user input to LCD
+void
+createUserInputString(char *stars_to_print_command, int *user_input_len)
+{
+	int i = 0;
+	for (i = 2; i < *user_input_len; i++)
+	{
+		stars_to_print_command[i] = '*';
+	}
+	stars_to_print_command[i + 1] = '\0';
+}
+
 // Reads the pressed key and appends it to the user input
 void
 getPassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_send){
 	
+	char key_pressed;
+	int user_input_len;
+	char stars_to_print_command[CHAR_ARRAY_SIZE] = "5>";
+	
 	printf("Type Something: ");
-	char keyPressed;
 	KEYPAD_Init();
-	keyPressed = KEYPAD_GetKey();
-	printf("%c\n\r", keyPressed);
+	key_pressed = KEYPAD_GetKey();
+	printf("%c\n\r", key_pressed);
 	
+	appendCharToCharArray(user_input, key_pressed);
+	printf("Current user input: %s\n\r", user_input);
 	
-	if(keyPressed == OK_BUTTON_CHAR)
+	user_input_len = strlen(user_input);
+	
+	createUserInputString(stars_to_print_command, &user_input_len);
+	
+	strcpy(spi_data_to_send, stars_to_print_command);
+	send_command_to_slave(spi_data_to_send);
+	
+	if(user_input_len == strlen(PASSWORD))
 	{
 		comparePassword(user_input, state, spi_data_to_send);
-	}else
-	{
-		appendCharToCharArray(user_input, keyPressed);
-		printf("Current user input: %s\n\r", user_input);
 	}
 	
 }
