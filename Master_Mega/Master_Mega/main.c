@@ -135,10 +135,15 @@ comparePassword(unsigned char *user_input, int *state, unsigned char *spi_data_t
 	
 	if(compare_result)
 	{
-		strcpy(spi_data_to_send, "3|Give pass code:");
+		printf("Wrong password");
+		strcpy(spi_data_to_send, "3>Try again:");
 		send_command_to_slave(spi_data_to_send);
+		// Clearing the user input
+		user_input[0] = '\0';
 	}else
 	{
+		// Clearing the user input
+		user_input[0] = '\0';
 		*state = STOP_TIMER;
 	}
 }
@@ -153,7 +158,7 @@ appendCharToCharArray(unsigned char* array, char c)
 }
 
 // Reads the pressed key and appends it to the user input
-static void
+void
 getPassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_send){
 	
 	printf("Type Something: ");
@@ -166,10 +171,12 @@ getPassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_se
 	if(keyPressed == OK_BUTTON_CHAR)
 	{
 		comparePassword(user_input, state, spi_data_to_send);
+	}else
+	{
+		appendCharToCharArray(user_input, keyPressed);
+		printf("Current user input: %s\n\r", user_input);
 	}
 	
-	appendCharToCharArray(user_input, keyPressed);
-	printf("Current user input: %s\n\r", user_input);
 }
 
 
@@ -207,6 +214,10 @@ int main(void)
 	// The user input from keypad is appended to this char array
 	unsigned char user_input[CHAR_ARRAY_SIZE] = "\0";
 	
+	// Clearing the screen
+	strcpy(spi_data_to_send, "4");
+	send_command_to_slave(spi_data_to_send);
+	
     while (1) 
     {	
 		switch(state)
@@ -216,7 +227,7 @@ int main(void)
 				motionSense(MOTION_SENSOR_PIN);
 				
 				// Movement detected --> sending message to lcd
-				strcpy(spi_data_to_send, "3|Give pass code:");
+				strcpy(spi_data_to_send, "3>Give pass code:");
 				send_command_to_slave(spi_data_to_send);
 				
 				// Switching state to receive the password
@@ -231,6 +242,9 @@ int main(void)
 				break;
 				
 			case STOP_TIMER:
+				strcpy(spi_data_to_send, "3>Alarm disarmed");
+				send_command_to_slave(spi_data_to_send);
+				state = WAIT_MOVEMENT;
 				break;
 				
 			default:

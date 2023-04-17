@@ -105,6 +105,8 @@ receive_command_from_mega(int *state, char *delimeter, char *payload)
 		// Getting the data from the register (Data from Mega)
 		spi_data_to_receive[i] = SPDR;
 	}
+	
+	printf("Data: %s\n\r", spi_data_to_receive);
 	// Splitting the string using : so the command and payload can be separated
 	char *ptr_split = strtok(spi_data_to_receive, delimeter);
 	
@@ -149,7 +151,7 @@ int main(void)
 	int state = WAIT_COMMAND; 
 	
 	// Delimeter for splitting the command and payload
-	char delimeter[2] = "|";
+	char delimeter[2] = ">";
 	
 	
 	// Enable interruts, for buzzer.
