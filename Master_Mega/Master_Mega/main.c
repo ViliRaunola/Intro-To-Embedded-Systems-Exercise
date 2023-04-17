@@ -129,7 +129,7 @@ getPassword(){
 	char keyPressed;
 	KEYPAD_Init();
 	keyPressed = KEYPAD_GetKey();
-	printf("%c\n ", keyPressed);
+	printf("%c\n\r", keyPressed);
 }
 
 
