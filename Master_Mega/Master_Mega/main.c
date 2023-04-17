@@ -135,12 +135,17 @@ comparePassword(unsigned char *user_input, int *state, unsigned char *spi_data_t
 	if(compare_result)
 	{
 		printf("Wrong password");
+		// Clearing the screen
+		strcpy(spi_data_to_send, "4");
+		send_command_to_slave(spi_data_to_send);
+		
 		strcpy(spi_data_to_send, "3>Try again:");
 		send_command_to_slave(spi_data_to_send);
 		// Clearing the user input
 		user_input[0] = '\0';
 	}else
 	{
+		printf("Passwords match!\n\r");
 		// Clearing the user input
 		user_input[0] = '\0';
 		*state = STOP_TIMER;
@@ -162,11 +167,10 @@ void
 createUserInputString(char *stars_to_print_command, int *user_input_len)
 {
 	int i = 0;
-	for (i = 2; i < *user_input_len; i++)
+	for (i = 2; i < *user_input_len+2; i++)
 	{
 		stars_to_print_command[i] = '*';
 	}
-	stars_to_print_command[i + 1] = '\0';
 }
 
 // Reads the pressed key and appends it to the user input
@@ -192,7 +196,7 @@ getPassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_se
 	strcpy(spi_data_to_send, stars_to_print_command);
 	send_command_to_slave(spi_data_to_send);
 	
-	if(user_input_len == strlen(PASSWORD))
+	if(user_input_len == 4)
 	{
 		comparePassword(user_input, state, spi_data_to_send);
 	}

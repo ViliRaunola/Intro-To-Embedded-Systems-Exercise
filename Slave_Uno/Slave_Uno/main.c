@@ -15,9 +15,10 @@
 #define WAIT_COMMAND 0
 #define BUZZER_ON 1
 #define BUZZER_OFF 2
-#define DISPLAY 3
+#define DISPLAY_FIRST_ROW 3
 #define DISPLAY_CLEAR 4
 #define DISPLAY_SECOND_ROW 5
+#define WAIT_FOR_START 6
 
 
 #include <avr/io.h>
@@ -210,9 +211,9 @@ int main(void)
 				state = WAIT_COMMAND;
 				break;
 			
-			case DISPLAY:
+			case DISPLAY_FIRST_ROW:
 				// Getting the next part aka the payload of command
-				lcd_clrscr();
+				lcd_gotoxy(0, 0);
 				lcd_puts(payload);
 				state = WAIT_COMMAND;
 				break;
@@ -225,6 +226,7 @@ int main(void)
 			case DISPLAY_SECOND_ROW:
 				lcd_gotoxy(0, 1);
 				lcd_puts(payload);
+				state = WAIT_COMMAND;
 				break;
 				
 			default:
