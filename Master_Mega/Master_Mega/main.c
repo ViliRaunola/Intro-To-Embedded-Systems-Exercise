@@ -75,8 +75,12 @@ USART_Receive( FILE *stream)
 This function sends the command in the char array to the slave Uno to be executed using SPI.
 */
 void
-send_command_to_slave(char *spi_data_to_send)
+send_command_to_slave(char *command)
 {
+	char spi_data_to_send[CHAR_ARRAY_SIZE];
+	
+	strcpy(spi_data_to_send, command);
+	
 	PORTB &= ~(1 << PB0); // SS low --> enables slave device
 	
 	//Sending the data to the slave
