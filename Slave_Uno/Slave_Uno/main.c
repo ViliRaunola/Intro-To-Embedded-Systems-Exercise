@@ -17,6 +17,7 @@
 #define BUZZER_OFF 2
 #define DISPLAY 3
 #define DISPLAY_CLEAR 4
+#define DISPLAY_SECOND_ROW 5
 
 
 #include <avr/io.h>
@@ -221,6 +222,11 @@ int main(void)
 				state = WAIT_COMMAND;
 				break;
 			
+			case DISPLAY_SECOND_ROW:
+				lcd_gotoxy(0, 1);
+				lcd_puts(payload);
+				break;
+				
 			default:
 				// Add something
 				break;
