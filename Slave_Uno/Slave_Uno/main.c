@@ -12,7 +12,7 @@
 #define CHAR_ARRAY_SIZE 40
 
 /*Definitions to switch cases*/
-#define WAIT_FOR_COMMAND 0
+#define WAIT_COMMAND 0
 #define BUZZER_ON 1
 #define BUZZER_OFF 2
 #define DISPLAY 3
@@ -147,7 +147,7 @@ int main(void)
 	The state of the Uno, used in the switch case structure. 
 	Is initialized as waiting for command since Uno just listens to Mega's commands.
 	*/
-	int state = WAIT_FOR_COMMAND; 
+	int state = WAIT_COMMAND; 
 	
 	// Delimeter for splitting the command and payload
 	char delimeter[2] = ":";
@@ -192,32 +192,32 @@ int main(void)
 		*/
 		switch(state)
 		{
-			case WAIT_FOR_COMMAND:
+			case WAIT_COMMAND:
 				receive_command_from_mega(&state, delimeter, payload);
 				break;
 			
 			case BUZZER_ON:
 				// Turns the buzzer on
 				TCCR1B |= (1 << CS10);
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 			
 			case BUZZER_OFF:
 				// Turns the buzzer off
 				TCCR1B &= ~(1 << CS10);
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 			
 			case DISPLAY:
 				// Getting the next part aka the payload of command
 				lcd_clrscr();
 				lcd_puts(payload);
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 				
 			case DISPLAY_CLEAR:
 				lcd_clrscr();
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 			
 			default:
@@ -227,5 +227,7 @@ int main(void)
 		
     }
 }
+
+/*#########################################################EOF#########################################################*/
 
 

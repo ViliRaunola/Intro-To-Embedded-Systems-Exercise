@@ -13,6 +13,12 @@
 #define PASSWORD "1234"
 #define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
 
+/*Definitions to switch cases*/
+#define WAIT_MOVEMENT 0
+#define START_TIMER 1
+#define KEYPAD_INPUT 2
+#define STOP_TIMER 3
+
 #include <avr/io.h>
 #include <util/delay.h>
 #include <util/setbaud.h>
@@ -114,11 +120,8 @@ motionSense(int sensePin){
 			//Do Something;
 		}
 		sensorState = 0;
-		_delay_ms(1000);
-		
+		_delay_ms(1000);	
 	}
-	
-	
 }
 
 
@@ -150,11 +153,47 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
+	// Setting input from motion sensor
+	DDRB &= ~(1 << MOTION_SENSOR_PIN);
+	
+	/* 
+	The state of Mega, used in the switch case structure. 
+	Is initialized as waiting for movement.
+	*/
+	int state = WAIT_MOVEMENT; 
+	
+	// Stores the data that is sent from Mega to  Uno
 	unsigned char spi_data_to_send[CHAR_ARRAY_SIZE] = "1";
+	
+	// 
 	
     while (1) 
     {	
-		/*strcpy(spi_data_to_send, "1");
+		switch(state)
+		{
+			case WAIT_MOVEMENT:
+				motionSense(MOTION_SENSOR_PIN);
+				state = KEYPAD_INPUT;
+				break;
+				
+			case START_TIMER:
+				break;
+				
+			case KEYPAD_INPUT:
+				getPassword();
+				break;
+				
+			case STOP_TIMER:
+				break;
+			default:
+				//add something here
+				break;
+		}
+    }
+}
+
+
+/*strcpy(spi_data_to_send, "1");
 		send_command_to_slave(spi_data_to_send);
 		printf("Buzzer on command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
@@ -173,8 +212,7 @@ int main(void)
 		send_command_to_slave(spi_data_to_send);
 		printf("Clear screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
-		*/
-		getPassword();
-    }
-}
+*/
+
+/*#########################################################EOF#########################################################*/
 
