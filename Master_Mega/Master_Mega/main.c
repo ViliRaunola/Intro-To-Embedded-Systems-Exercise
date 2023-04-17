@@ -110,8 +110,6 @@ motionSense(int sensePin){
 	
 	while(1){
 		
-		printf("Waiting for Motion\n\r");
-		
 		sensorState = (PINB & (1 << sensePin));
 		
 		if(sensorState != 0){
@@ -177,7 +175,7 @@ int main(void)
 	unsigned char spi_data_to_send[CHAR_ARRAY_SIZE] = "1";
 	
 	// The user input from keypad is appended to this char array
-	unsigned char user_input[CHAR_ARRAY_SIZE];
+	unsigned char user_input[CHAR_ARRAY_SIZE] = "\0";
 	
     while (1) 
     {	
@@ -188,7 +186,7 @@ int main(void)
 				motionSense(MOTION_SENSOR_PIN);
 				
 				// Movement detected --> sending message to lcd
-				strcpy(spi_data_to_send, "3:Insert password");
+				strcpy(spi_data_to_send, "3|Give pass code:");
 				send_command_to_slave(spi_data_to_send);
 				
 				// Switching state to receive the password

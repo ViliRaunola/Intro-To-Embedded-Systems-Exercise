@@ -119,7 +119,6 @@ receive_command_from_mega(int *state, char *delimeter, char *payload)
 	
 	// Copying the payload if there was any
 	if(ptr_split != NULL) {
-		printf("Here");
 		strcpy(payload, ptr_split);
 	}
 }
@@ -150,7 +149,7 @@ int main(void)
 	int state = WAIT_COMMAND; 
 	
 	// Delimeter for splitting the command and payload
-	char delimeter[2] = ":";
+	char delimeter[2] = "|";
 	
 	
 	// Enable interruts, for buzzer.
