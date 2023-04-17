@@ -102,13 +102,17 @@ receive_command_from_mega(int *state, char *delimeter, char *payload)
 	int temp_state;
 	for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
 	{
+		// Delays are added to prevent things happening too fast
+		_delay_us(10);
 		// Checking SPI status register for reception complete
 		while(!(SPSR & (1 << SPIF))) {;}
+		// Delays are added to prevent things happening too fast
+		_delay_us(10);
 		// Getting the data from the register (Data from Mega)
 		spi_data_to_receive[i] = SPDR;
 	}
 	
-	printf("Data: %s\n\r", spi_data_to_receive);
+	printf("Data received: %s\n\r", spi_data_to_receive);
 	// Splitting the string using : so the command and payload can be separated
 	char *ptr_split = strtok(spi_data_to_receive, delimeter);
 	
@@ -230,6 +234,7 @@ int main(void)
 				break;
 				
 			default:
+				printf("Error\n\r");
 				// Add something
 				break;
 		}

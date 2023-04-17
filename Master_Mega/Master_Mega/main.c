@@ -81,6 +81,8 @@ send_command_to_slave(char *command)
 	
 	strcpy(spi_data_to_send, command);
 	
+	printf("Command sent: %s\n\r", spi_data_to_send);
+	
 	PORTB &= ~(1 << PB0); // SS low --> enables slave device
 	
 	//Sending the data to the slave
@@ -240,6 +242,9 @@ int main(void)
 		switch(state)
 		{
 			case WAIT_MOVEMENT:
+			
+				send_command_to_slave("4");
+				send_command_to_slave("3>Alarm is on");
 				// Waiting for movement
 				motionSense(MOTION_SENSOR_PIN);
 				
@@ -258,7 +263,9 @@ int main(void)
 				break;
 				
 			case STOP_TIMER:
+				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
+				_delay_ms(5000);
 				state = WAIT_MOVEMENT;
 				break;
 				
