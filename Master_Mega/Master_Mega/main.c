@@ -110,17 +110,16 @@ motionSense(int sensePin){
 	
 	while(1){
 		
-		//printf("Waiting for Motion\n");
+		printf("Waiting for Motion\n\r");
 		
 		sensorState = (PINB & (1 << sensePin));
 		
 		if(sensorState != 0){
 			
-			printf("Motion Detected\n");
-			//Do Something;
+			printf("Motion Detected\n\r");
+			break;
 		}
 		sensorState = 0;
-		_delay_ms(1000);	
 	}
 }
 
