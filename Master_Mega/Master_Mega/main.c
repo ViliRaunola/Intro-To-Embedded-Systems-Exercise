@@ -31,10 +31,6 @@
 
 
 
-
-
-
-
 /* USART_... Functions are for 
 communicating between the Arduino and the computer through the USB.
 Can be used by printf();. */
@@ -79,7 +75,7 @@ USART_Receive( FILE *stream)
 This function sends the command in the char array to the slave Uno to be executed using SPI.
 */
 void
-send_command_to_slave(unsigned char *spi_data_to_send)
+send_command_to_slave(char *spi_data_to_send)
 {
 	PORTB &= ~(1 << PB0); // SS low --> enables slave device
 	
@@ -126,7 +122,7 @@ Compares the user input after OK is pressed to the stored password.
 If the passwords match the state is switched.
 */
 void
-comparePassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_send)
+comparePassword(char *user_input, int *state)
 {
 	int compare_result;
 	
@@ -136,11 +132,9 @@ comparePassword(unsigned char *user_input, int *state, unsigned char *spi_data_t
 	{
 		printf("Wrong password");
 		// Clearing the screen
-		strcpy(spi_data_to_send, "4");
-		send_command_to_slave(spi_data_to_send);
+		send_command_to_slave("4");
 		
-		strcpy(spi_data_to_send, "3>Try again:");
-		send_command_to_slave(spi_data_to_send);
+		send_command_to_slave("3>Try again:");
 		// Clearing the user input
 		user_input[0] = '\0';
 	}else
@@ -154,7 +148,7 @@ comparePassword(unsigned char *user_input, int *state, unsigned char *spi_data_t
 
 // Appends a character to a character array
 void
-appendCharToCharArray(unsigned char* array, char c)
+appendCharToCharArray(char* array, char c)
 {
 	int len = strlen(array);
 	array[len] = c;
@@ -175,7 +169,7 @@ createUserInputString(char *stars_to_print_command, int *user_input_len)
 
 // Reads the pressed key and appends it to the user input
 void
-getPassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_send){
+getPassword(char *user_input, int *state){
 	
 	char key_pressed;
 	int user_input_len;
@@ -193,12 +187,11 @@ getPassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_se
 	
 	createUserInputString(stars_to_print_command, &user_input_len);
 	
-	strcpy(spi_data_to_send, stars_to_print_command);
-	send_command_to_slave(spi_data_to_send);
+	send_command_to_slave(stars_to_print_command);
 	
 	if(user_input_len == 4)
 	{
-		comparePassword(user_input, state, spi_data_to_send);
+		comparePassword(user_input, state);
 	}
 	
 }
@@ -232,15 +225,11 @@ int main(void)
 	*/
 	int state = WAIT_MOVEMENT; 
 	
-	// Stores the data that is sent from Mega to  Uno
-	unsigned char spi_data_to_send[CHAR_ARRAY_SIZE] = "1";
-	
 	// The user input from keypad is appended to this char array
-	unsigned char user_input[CHAR_ARRAY_SIZE] = "\0";
+	char user_input[CHAR_ARRAY_SIZE] = "\0";
 	
 	// Clearing the screen
-	strcpy(spi_data_to_send, "4");
-	send_command_to_slave(spi_data_to_send);
+	send_command_to_slave("4");
 	
     while (1) 
     {	
@@ -251,8 +240,7 @@ int main(void)
 				motionSense(MOTION_SENSOR_PIN);
 				
 				// Movement detected --> sending message to lcd
-				strcpy(spi_data_to_send, "3>Give pass code:");
-				send_command_to_slave(spi_data_to_send);
+				send_command_to_slave("3>Give pass code:");
 				
 				// Switching state to receive the password
 				state = KEYPAD_INPUT;
@@ -262,12 +250,11 @@ int main(void)
 				break;
 				
 			case KEYPAD_INPUT:
-				getPassword(user_input, &state, spi_data_to_send);
+				getPassword(user_input, &state);
 				break;
 				
 			case STOP_TIMER:
-				strcpy(spi_data_to_send, "3>Alarm disarmed");
-				send_command_to_slave(spi_data_to_send);
+				send_command_to_slave("3>Alarm disarmed");
 				state = WAIT_MOVEMENT;
 				break;
 				
@@ -279,23 +266,23 @@ int main(void)
 }
 
 
-/*strcpy(spi_data_to_send, "1");
-		send_command_to_slave(spi_data_to_send);
+/*strcpy(g_spi_data_to_send, "1");
+		send_command_to_slave(g_spi_data_to_send);
 		printf("Buzzer on command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
-		strcpy(spi_data_to_send, "2");
-		send_command_to_slave(spi_data_to_send);
+		strcpy(g_spi_data_to_send, "2");
+		send_command_to_slave(g_spi_data_to_send);
 		printf("Buzzer off command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
-		strcpy(spi_data_to_send, "3:Hello!");
-		send_command_to_slave(spi_data_to_send);
+		strcpy(g_spi_data_to_send, "3:Hello!");
+		send_command_to_slave(g_spi_data_to_send);
 		printf("Print to screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 		
-		strcpy(spi_data_to_send, "4");
-		send_command_to_slave(spi_data_to_send);
+		strcpy(g_spi_data_to_send, "4");
+		send_command_to_slave(g_spi_data_to_send);
 		printf("Clear screen command sent. Sleeping for 5s\n\r");
 		_delay_ms(5000);
 */

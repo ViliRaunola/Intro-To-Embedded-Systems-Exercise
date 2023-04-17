@@ -97,7 +97,7 @@ void
 receive_command_from_mega(int *state, char *delimeter, char *payload)
 {
 	// To this array data is saved from Master in SPI communication
-	unsigned char spi_data_to_receive[CHAR_ARRAY_SIZE];
+	char spi_data_to_receive[CHAR_ARRAY_SIZE];
 	
 	int temp_state;
 	for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
@@ -144,7 +144,7 @@ int main(void)
 	SPCR |= (1 << SPR0);
 	
 	// Storing the possible payload that comes with the command from Mega
-	unsigned char payload[CHAR_ARRAY_SIZE];
+	char payload[CHAR_ARRAY_SIZE];
 	
 	/* 
 	The state of the Uno, used in the switch case structure. 
