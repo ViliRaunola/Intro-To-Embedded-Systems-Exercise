@@ -12,6 +12,7 @@
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
 #define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
+#define OK_BUTTON_CHAR 'A'
 
 /*Definitions to switch cases*/
 #define WAIT_MOVEMENT 0
@@ -121,9 +122,39 @@ motionSense(int sensePin){
 	}
 }
 
+/*
+Compares the user input after OK is pressed to the stored password.
+If the passwords match the state is switched.
+*/
+void
+comparePassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_send)
+{
+	int compare_result;
+	
+	compare_result = strcmp(PASSWORD, user_input);
+	
+	if(compare_result)
+	{
+		strcpy(spi_data_to_send, "3|Give pass code:");
+		send_command_to_slave(spi_data_to_send);
+	}else
+	{
+		*state = STOP_TIMER;
+	}
+}
 
+// Appends a character to a character array
+void
+appendCharToCharArray(unsigned char* array, char c)
+{
+	int len = strlen(array);
+	array[len] = c;
+	array[len+1] = '\0';
+}
+
+// Reads the pressed key and appends it to the user input
 static void
-getPassword(unsigned char *user_input){
+getPassword(unsigned char *user_input, int *state, unsigned char *spi_data_to_send){
 	
 	printf("Type Something: ");
 	char keyPressed;
@@ -131,18 +162,17 @@ getPassword(unsigned char *user_input){
 	keyPressed = KEYPAD_GetKey();
 	printf("%c\n\r", keyPressed);
 	
+	
+	if(keyPressed == OK_BUTTON_CHAR)
+	{
+		comparePassword(user_input, state, spi_data_to_send);
+	}
+	
 	appendCharToCharArray(user_input, keyPressed);
 	printf("Current user input: %s\n\r", user_input);
 }
 
-// Appends a character to a character array
-void 
-appendCharToCharArray(unsigned char* array, char c) 
-{
-	int len = strlen(array);
-	array[len] = c;
-	array[len+1] = '\0';
-}
+
 
 
 
@@ -197,7 +227,7 @@ int main(void)
 				break;
 				
 			case KEYPAD_INPUT:
-				getPassword(user_input);
+				getPassword(user_input, &state, spi_data_to_send);
 				break;
 				
 			case STOP_TIMER:
