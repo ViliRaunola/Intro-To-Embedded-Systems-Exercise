@@ -254,11 +254,20 @@ askToRearm(int *state)
 	
 	if (key_pressed == 'A')
 	{
+		send_command_to_slave("4");
+		send_command_to_slave("3>Rearming in:");
+		send_command_to_slave("5>3");
+		_delay_ms(1000);
+		send_command_to_slave("5>2");
+		_delay_ms(1000);
+		send_command_to_slave("5>1");
+		_delay_ms(1000);
 		*state = WAIT_MOVEMENT;
 	} else if (key_pressed == 'B')
 	{
 		send_command_to_slave("3>Shutting down...");
-		_delay_ms(3000);
+		_delay_ms(2000);
+		send_command_to_slave("4");
 		send_command_to_slave("6");	
 		// Setting the sleep mode for "Power-down"
 		SMCR |= (1 << SM1);
@@ -295,7 +304,7 @@ int main(void)
 	The state of Mega, used in the switch case structure. 
 	Is initialized as waiting for movement.
 	*/
-	int state = WAIT_MOVEMENT; 
+	int state = REARM; 
 	
 	// The user input from keypad is appended to this char array
 	char user_input[CHAR_ARRAY_SIZE] = "\0";
