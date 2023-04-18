@@ -210,6 +210,7 @@ getPassword(char *user_input, int *state){
 	else if ( (key_pressed == BACKSPACE_CHAR) && (user_input_len > 0) )
 	{
 		removeLastChar(user_input, &user_input_len);
+		user_input_len = strlen(user_input);
 		// Refreshing the screen with correct amount of stars
 		send_command_to_slave("4");
 		send_command_to_slave("3>Give pass code:");	
