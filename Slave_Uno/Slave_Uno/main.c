@@ -12,11 +12,13 @@
 #define CHAR_ARRAY_SIZE 40
 
 /*Definitions to switch cases*/
-#define WAIT_FOR_COMMAND 0
+#define WAIT_COMMAND 0
 #define BUZZER_ON 1
 #define BUZZER_OFF 2
-#define DISPLAY 3
+#define DISPLAY_FIRST_ROW 3
 #define DISPLAY_CLEAR 4
+#define DISPLAY_SECOND_ROW 5
+#define WAIT_FOR_START 6
 
 
 #include <avr/io.h>
@@ -95,16 +97,22 @@ void
 receive_command_from_mega(int *state, char *delimeter, char *payload)
 {
 	// To this array data is saved from Master in SPI communication
-	unsigned char spi_data_to_receive[CHAR_ARRAY_SIZE];
+	char spi_data_to_receive[CHAR_ARRAY_SIZE];
 	
 	int temp_state;
 	for (int8_t i = 0; i < CHAR_ARRAY_SIZE; i++)
 	{
+		// Delays are added to prevent things happening too fast
+		_delay_us(10);
 		// Checking SPI status register for reception complete
 		while(!(SPSR & (1 << SPIF))) {;}
+		// Delays are added to prevent things happening too fast
+		_delay_us(10);
 		// Getting the data from the register (Data from Mega)
 		spi_data_to_receive[i] = SPDR;
 	}
+	
+	printf("Data received: %s\n\r", spi_data_to_receive);
 	// Splitting the string using : so the command and payload can be separated
 	char *ptr_split = strtok(spi_data_to_receive, delimeter);
 	
@@ -119,7 +127,6 @@ receive_command_from_mega(int *state, char *delimeter, char *payload)
 	
 	// Copying the payload if there was any
 	if(ptr_split != NULL) {
-		printf("Here");
 		strcpy(payload, ptr_split);
 	}
 }
@@ -141,16 +148,16 @@ int main(void)
 	SPCR |= (1 << SPR0);
 	
 	// Storing the possible payload that comes with the command from Mega
-	unsigned char payload[CHAR_ARRAY_SIZE];
+	char payload[CHAR_ARRAY_SIZE];
 	
 	/* 
 	The state of the Uno, used in the switch case structure. 
 	Is initialized as waiting for command since Uno just listens to Mega's commands.
 	*/
-	int state = WAIT_FOR_COMMAND; 
+	int state = WAIT_COMMAND; 
 	
 	// Delimeter for splitting the command and payload
-	char delimeter[2] = ":";
+	char delimeter[2] = ">";
 	
 	
 	// Enable interruts, for buzzer.
@@ -192,40 +199,49 @@ int main(void)
 		*/
 		switch(state)
 		{
-			case WAIT_FOR_COMMAND:
+			case WAIT_COMMAND:
 				receive_command_from_mega(&state, delimeter, payload);
 				break;
 			
 			case BUZZER_ON:
 				// Turns the buzzer on
 				TCCR1B |= (1 << CS10);
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 			
 			case BUZZER_OFF:
 				// Turns the buzzer off
 				TCCR1B &= ~(1 << CS10);
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 			
-			case DISPLAY:
+			case DISPLAY_FIRST_ROW:
 				// Getting the next part aka the payload of command
-				lcd_clrscr();
+				lcd_gotoxy(0, 0);
 				lcd_puts(payload);
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 				
 			case DISPLAY_CLEAR:
 				lcd_clrscr();
-				state = WAIT_FOR_COMMAND;
+				state = WAIT_COMMAND;
 				break;
 			
+			case DISPLAY_SECOND_ROW:
+				lcd_gotoxy(0, 1);
+				lcd_puts(payload);
+				state = WAIT_COMMAND;
+				break;
+				
 			default:
+				printf("Error\n\r");
 				// Add something
 				break;
 		}
 		
     }
 }
+
+/*#########################################################EOF#########################################################*/
 
 
