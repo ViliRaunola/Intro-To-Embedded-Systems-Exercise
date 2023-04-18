@@ -269,6 +269,7 @@ askToRearm(int *state)
 		// Informing user of rearming using LCD
 		send_command_to_slave("4");
 		send_command_to_slave("3>Rearming in:");
+		_delay_ms(100);
 		
 		for (int i = REARM_TIME; i > 0; i--)
 		{
@@ -276,7 +277,6 @@ askToRearm(int *state)
 			send_command_to_slave(command_to_send);
 			_delay_ms(1000);	
 		}
-		
 		*state = WAIT_MOVEMENT;
 		
 	} else if (key_pressed == POWER_OFF_CHAR)
