@@ -245,7 +245,7 @@ askToRearm(int *state)
 	
 	// Informing the user by LCD
 	send_command_to_slave("4");
-	send_command_to_slave("3>Rearm alarm?");
+	send_command_to_slave("3>Arm alarm?");
 	send_command_to_slave("5>A OK, B shutdown");
 	
 	KEYPAD_Init();
