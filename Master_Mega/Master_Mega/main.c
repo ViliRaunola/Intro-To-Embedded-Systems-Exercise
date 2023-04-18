@@ -207,8 +207,7 @@ getPassword(char *user_input, int *state){
 	{
 		comparePassword(user_input, state);
 	} 
-	
-	if ( (key_pressed == BACKSPACE_CHAR) && (user_input_len > 0) )
+	else if ( (key_pressed == BACKSPACE_CHAR) && (user_input_len > 0) )
 	{
 		removeLastChar(user_input, &user_input_len);
 		// Refreshing the screen with correct amount of stars
@@ -216,9 +215,8 @@ getPassword(char *user_input, int *state){
 		send_command_to_slave("3>Give pass code:");	
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
-	}
-	
-	if (user_input_len <= PIN_REQUIRED_LEN)
+	} 
+	else if (user_input_len <= PIN_REQUIRED_LEN)
 	{
 		appendCharToCharArray(user_input, key_pressed);
 		printf("Current user input: %s\n\r", user_input);
@@ -275,7 +273,7 @@ int main(void)
 				motionSense(MOTION_SENSOR_PIN);
 				
 				// Movement detected --> sending message to lcd
-				send_command_to_slave("3>Give pass code:");
+				send_command_to_slave("3>Give 4 digit pin");
 				
 				// Switching state to receive the password
 				state = KEYPAD_INPUT;
