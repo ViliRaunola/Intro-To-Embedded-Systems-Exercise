@@ -240,7 +240,7 @@ int main(void)
 				// Enabling sleep mode
 				SMCR |= (1 << SE);
 				sleep_cpu();
-				// !Once here there is no feature to wake the Mega!
+				// !Once here, there is no feature to wake the Uno other than the reset button!
 				break;
 				
 			default:
