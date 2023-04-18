@@ -24,6 +24,7 @@
 #define START_TIMER 1
 #define KEYPAD_INPUT 2
 #define STOP_TIMER 3
+#define REARM 4
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -32,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <avr/sleep.h>
 #include "keypad.h"
 
 
@@ -236,7 +238,37 @@ getPassword(char *user_input, int *state){
 	}
 }
 
-
+void
+askToRearm(int *state)
+{
+	char key_pressed;
+	
+	// Informing the user by LCD
+	send_command_to_slave("4");
+	send_command_to_slave("3>Rearm alarm?");
+	send_command_to_slave("5>A OK, B shutdown");
+	
+	KEYPAD_Init();
+	key_pressed = KEYPAD_GetKey();
+	printf("%c\n\r", key_pressed);
+	
+	if (key_pressed == 'A')
+	{
+		*state = WAIT_MOVEMENT;
+	} else if (key_pressed == 'B')
+	{
+		send_command_to_slave("3>Shutting down...");
+		_delay_ms(3000);
+		send_command_to_slave("6");	
+		// Setting the sleep mode for "Power-down"
+		SMCR |= (1 << SM1);
+		_delay_ms(100);
+		// Enabling sleep mode
+		SMCR |= (1 << SE);
+		sleep_cpu();
+		// !Once here there is no feature to wake the Mega!
+	}
+}
 
 
 
@@ -305,6 +337,11 @@ int main(void)
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
 				_delay_ms(5000);
+				state = REARM;
+				break;
+				
+			case REARM:
+				askToRearm(&state);
 				state = WAIT_MOVEMENT;
 				break;
 				
