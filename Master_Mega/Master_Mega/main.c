@@ -256,11 +256,12 @@ askToRearm(int *state)
 	{
 		send_command_to_slave("4");
 		send_command_to_slave("3>Rearming in:");
-		send_command_to_slave("5>3");
+		_delay_ms(100);
+		send_command_to_slave("5>3s");
 		_delay_ms(1000);
-		send_command_to_slave("5>2");
+		send_command_to_slave("5>2s");
 		_delay_ms(1000);
-		send_command_to_slave("5>1");
+		send_command_to_slave("5>1s");
 		_delay_ms(1000);
 		*state = WAIT_MOVEMENT;
 	} else if (key_pressed == 'B')
