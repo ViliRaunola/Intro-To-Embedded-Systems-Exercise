@@ -156,6 +156,9 @@ comparePassword(char *user_input, int *state)
 	}else
 	{
 		printf("Passwords match!\n\r");
+		send_command_to_slave("4");
+		send_command_to_slave("3>Correct password");
+		_delay_ms(4000);
 		// Clearing the user input
 		user_input[0] = '\0';
 		*state = STOP_TIMER;
