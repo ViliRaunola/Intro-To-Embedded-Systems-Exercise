@@ -273,7 +273,8 @@ askToRearm(int *state)
 		
 		for (int i = REARM_TIME; i > 0; i--)
 		{
-			command_to_send[2] = i;
+			command_to_send[2] = i + '0';
+			command_to_send[3] = 's';
 			send_command_to_slave(command_to_send);
 			_delay_ms(1000);	
 		}
