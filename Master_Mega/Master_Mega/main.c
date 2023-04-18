@@ -12,7 +12,7 @@
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
 #define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
-#define PIN_REQUIRED_LEN 4
+#define PIN_REQUIRED_LEN 3
 
 /*Keypad button definitions*/
 #define OK_CHAR '#'
@@ -172,6 +172,10 @@ void
 createUserInputString(char *stars_to_print_command, int *user_input_len)
 {
 	int i = 0;
+	for (i = 2; i < PIN_REQUIRED_LEN+3; i++)
+	{
+		stars_to_print_command[i] = ' ';
+	}
 	for (i = 2; i < *user_input_len+2; i++)
 	{
 		stars_to_print_command[i] = '*';
@@ -212,12 +216,10 @@ getPassword(char *user_input, int *state){
 		removeLastChar(user_input, &user_input_len);
 		user_input_len = strlen(user_input);
 		// Refreshing the screen with correct amount of stars
-		send_command_to_slave("4");
-		send_command_to_slave("3>Give pass code:");	
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
 	} 
-	else if (user_input_len <= PIN_REQUIRED_LEN)
+	else if ( (user_input_len <= PIN_REQUIRED_LEN) && (key_pressed != '*') )
 	{
 		appendCharToCharArray(user_input, key_pressed);
 		printf("Current user input: %s\n\r", user_input);
