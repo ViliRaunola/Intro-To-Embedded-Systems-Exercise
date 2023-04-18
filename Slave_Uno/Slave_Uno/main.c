@@ -18,7 +18,7 @@
 #define DISPLAY_FIRST_ROW 3
 #define DISPLAY_CLEAR 4
 #define DISPLAY_SECOND_ROW 5
-#define WAIT_FOR_START 6
+#define POWER_OFF 6
 
 
 #include <avr/io.h>
@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <avr/interrupt.h>
 #include <string.h>
+#include <avr/sleep.h>
 #include "lcd.h" // Source: From the provided course material
 
 /*USART*/
@@ -231,6 +232,15 @@ int main(void)
 				lcd_gotoxy(0, 1);
 				lcd_puts(payload);
 				state = WAIT_COMMAND;
+				break;
+				
+			case POWER_OFF:
+				SMCR |= (1 << SM1);
+				_delay_ms(100);
+				// Enabling sleep mode
+				SMCR |= (1 << SE);
+				sleep_cpu();
+				// !Once here, there is no feature to wake the Uno other than the reset button!
 				break;
 				
 			default:

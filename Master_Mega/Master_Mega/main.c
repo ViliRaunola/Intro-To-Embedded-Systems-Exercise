@@ -13,17 +13,21 @@
 #define PASSWORD "1234"
 #define PIN_REQUIRED_LEN 3 // The length of the stored password - 1
 #define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
+#define REARM_TIME 5
 
 
 /*Keypad button definitions*/
 #define OK_CHAR '#'
 #define BACKSPACE_CHAR '*'
+#define POWER_OFF_CHAR 'B'
+#define REARM_CHAR 'A'
 
 /*Definitions to switch cases*/
 #define WAIT_MOVEMENT 0
 #define START_TIMER 1
 #define KEYPAD_INPUT 2
 #define STOP_TIMER 3
+#define REARM 4
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -32,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <avr/sleep.h>
 #include "keypad.h"
 
 
@@ -236,7 +241,64 @@ getPassword(char *user_input, int *state){
 	}
 }
 
-
+/*
+Asks the user if they want to rearm the system.
+If rearm is selected there is REARM_TIME to leave the area before the system is detecting movement.
+If the shutdown is selected sleep mode for Uno and Mega is set to Power-down.
+*/
+void
+askToRearm(int *state)
+{
+	char key_pressed;
+	
+	// Informing the user by LCD
+	send_command_to_slave("4");
+	send_command_to_slave("3>Arm alarm?");
+	send_command_to_slave("5>A OK, B shutdown");
+	
+	// Getting user input
+	KEYPAD_Init();
+	key_pressed = KEYPAD_GetKey();
+	printf("%c\n\r", key_pressed);
+	
+	// Check the selection
+	if (key_pressed == REARM_CHAR)
+	{
+		char command_to_send[CHAR_ARRAY_SIZE] = "5>";
+		
+		// Informing user of rearming using LCD
+		send_command_to_slave("4");
+		send_command_to_slave("3>Rearming in:");
+		_delay_ms(100);
+		
+		for (int i = REARM_TIME; i > 0; i--)
+		{
+			command_to_send[2] = i + '0';
+			command_to_send[3] = 's';
+			send_command_to_slave(command_to_send);
+			_delay_ms(1000);	
+		}
+		*state = WAIT_MOVEMENT;
+		
+	} else if (key_pressed == POWER_OFF_CHAR)
+	{
+		// Informing user of rearming using LCD
+		send_command_to_slave("3>Shutting down...");
+		_delay_ms(2000);
+		send_command_to_slave("4");
+		
+		// Setting Uno to Power-down
+		send_command_to_slave("6");	
+		
+		// Setting the sleep mode for "Power-down"
+		SMCR |= (1 << SM1);
+		_delay_ms(100);
+		// Enabling sleep mode
+		SMCR |= (1 << SE);
+		sleep_cpu();
+		// !Once here, there is no feature to wake the Mega other than the reset button!
+	}
+}
 
 
 
@@ -263,7 +325,7 @@ int main(void)
 	The state of Mega, used in the switch case structure. 
 	Is initialized as waiting for movement.
 	*/
-	int state = WAIT_MOVEMENT; 
+	int state = REARM; 
 	
 	// The user input from keypad is appended to this char array
 	char user_input[CHAR_ARRAY_SIZE] = "\0";
@@ -305,7 +367,11 @@ int main(void)
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
 				_delay_ms(5000);
-				state = WAIT_MOVEMENT;
+				state = REARM;
+				break;
+				
+			case REARM:
+				askToRearm(&state);
 				break;
 				
 			default:
