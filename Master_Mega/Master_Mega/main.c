@@ -342,7 +342,6 @@ int main(void)
 				
 			case REARM:
 				askToRearm(&state);
-				state = WAIT_MOVEMENT;
 				break;
 				
 			default:
