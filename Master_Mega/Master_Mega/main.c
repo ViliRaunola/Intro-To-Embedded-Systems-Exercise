@@ -11,8 +11,9 @@
 #define MYUBRR (FOSC/16/BAUD-1)
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
+#define PIN_REQUIRED_LEN 3 // The length of the stored password - 1
 #define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
-#define PIN_REQUIRED_LEN 3
+
 
 /*Keypad button definitions*/
 #define OK_CHAR '#'
@@ -142,9 +143,8 @@ comparePassword(char *user_input, int *state)
 	if(compare_result)
 	{
 		printf("Wrong password");
-		// Clearing the screen
+		// Notify the user
 		send_command_to_slave("4");
-		
 		send_command_to_slave("3>Try again:");
 		// Clearing the user input
 		user_input[0] = '\0';
@@ -198,9 +198,12 @@ getPassword(char *user_input, int *state){
 	
 	char key_pressed;
 	int user_input_len;
+	/* This char array is used to store the string to be displayed on LCD's second row.
+	It will be appended with *. 
+	So it shows the user if they have pressed the key and how many characters they have inputted so far.*/
 	char stars_to_print_command[CHAR_ARRAY_SIZE] = "5>";
 	
-	printf("Type Something: ");
+	printf("Type password: ");
 	KEYPAD_Init();
 	key_pressed = KEYPAD_GetKey();
 	printf("%c\n\r", key_pressed);
@@ -211,18 +214,22 @@ getPassword(char *user_input, int *state){
 	{
 		comparePassword(user_input, state);
 	} 
+	// Checks if backspace is pressed and that from empty string a character cannot be deleted.
 	else if ( (key_pressed == BACKSPACE_CHAR) && (user_input_len > 0) )
 	{
 		removeLastChar(user_input, &user_input_len);
+		// Refreshing the LCD screen with correct amount of stars
 		user_input_len = strlen(user_input);
-		// Refreshing the screen with correct amount of stars
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
 	} 
+	/* Appending to the user input only if the length of the password is not exceeded 
+	and that the backspace button is not considered part of the password.*/
 	else if ( (user_input_len <= PIN_REQUIRED_LEN) && (key_pressed != '*') )
 	{
 		appendCharToCharArray(user_input, key_pressed);
 		printf("Current user input: %s\n\r", user_input);
+		// Refreshing the LCD screen with correct amount of stars
 		user_input_len = strlen(user_input);
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
@@ -269,9 +276,11 @@ int main(void)
 		switch(state)
 		{
 			case WAIT_MOVEMENT:
-			
+				
+				// Updating LCD
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm is on");
+				
 				// Waiting for movement
 				motionSense(MOTION_SENSOR_PIN);
 				
@@ -290,6 +299,9 @@ int main(void)
 				break;
 				
 			case STOP_TIMER:
+				
+				//TODO Maybe add the timer stopping here
+			
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
 				_delay_ms(5000);
