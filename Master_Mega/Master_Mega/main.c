@@ -12,6 +12,11 @@
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
 #define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
+#define PIN_REQUIRED_LEN 4
+
+/*Keypad button definitions*/
+#define OK_CHAR '#'
+#define BACKSPACE_CHAR '*'
 
 /*Definitions to switch cases*/
 #define WAIT_MOVEMENT 0
@@ -173,6 +178,16 @@ createUserInputString(char *stars_to_print_command, int *user_input_len)
 	}
 }
 
+/*
+Removes the last char of the array. 
+Should be called only if the char has length of > 0.
+*/
+void
+removeLastChar(char *user_input, int *user_input_len)
+{
+	user_input[*user_input_len-1] = '\0';
+}
+
 // Reads the pressed key and appends it to the user input
 void
 getPassword(char *user_input, int *state){
@@ -186,20 +201,31 @@ getPassword(char *user_input, int *state){
 	key_pressed = KEYPAD_GetKey();
 	printf("%c\n\r", key_pressed);
 	
-	appendCharToCharArray(user_input, key_pressed);
-	printf("Current user input: %s\n\r", user_input);
-	
 	user_input_len = strlen(user_input);
 	
-	createUserInputString(stars_to_print_command, &user_input_len);
-	
-	send_command_to_slave(stars_to_print_command);
-	
-	if(user_input_len == 4)
+	if (key_pressed == OK_CHAR)
 	{
 		comparePassword(user_input, state);
+	} 
+	
+	if ( (key_pressed == BACKSPACE_CHAR) && (user_input_len > 0) )
+	{
+		removeLastChar(user_input, &user_input_len);
+		// Refreshing the screen with correct amount of stars
+		send_command_to_slave("4");
+		send_command_to_slave("3>Give pass code:");	
+		createUserInputString(stars_to_print_command, &user_input_len);
+		send_command_to_slave(stars_to_print_command);
 	}
 	
+	if (user_input_len <= PIN_REQUIRED_LEN)
+	{
+		appendCharToCharArray(user_input, key_pressed);
+		printf("Current user input: %s\n\r", user_input);
+		user_input_len = strlen(user_input);
+		createUserInputString(stars_to_print_command, &user_input_len);
+		send_command_to_slave(stars_to_print_command);
+	}
 }
 
 
@@ -275,28 +301,6 @@ int main(void)
 		}
     }
 }
-
-
-/*strcpy(g_spi_data_to_send, "1");
-		send_command_to_slave(g_spi_data_to_send);
-		printf("Buzzer on command sent. Sleeping for 5s\n\r");
-		_delay_ms(5000);
-		
-		strcpy(g_spi_data_to_send, "2");
-		send_command_to_slave(g_spi_data_to_send);
-		printf("Buzzer off command sent. Sleeping for 5s\n\r");
-		_delay_ms(5000);
-		
-		strcpy(g_spi_data_to_send, "3:Hello!");
-		send_command_to_slave(g_spi_data_to_send);
-		printf("Print to screen command sent. Sleeping for 5s\n\r");
-		_delay_ms(5000);
-		
-		strcpy(g_spi_data_to_send, "4");
-		send_command_to_slave(g_spi_data_to_send);
-		printf("Clear screen command sent. Sleeping for 5s\n\r");
-		_delay_ms(5000);
-*/
 
 /*#########################################################EOF#########################################################*/
 
