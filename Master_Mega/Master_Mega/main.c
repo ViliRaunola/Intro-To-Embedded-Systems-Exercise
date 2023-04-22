@@ -29,7 +29,7 @@
 #define MOTION_DETECTED 1
 #define KEYPAD_INPUT 2
 #define ACTIVATE_BUZZER 3
-#define DEACTIVATE_BUZZER 4
+#define DEACTIVATE_TIMER 4
 #define REARM 5
 
 
@@ -324,10 +324,12 @@ void Interrupt_init(){
 		EICRA |= (1<<ISC01)|(1<<ISC00); //Set rising edge INT0
 		EIMSK |= (1<<INT0); //Enable INT0
 		
-		//Timer interrupt
-		TCNT3 = 0;
-		TCCR3B |= (1<<CS32) | (1<<CS30); //set the pre-scalar as 1024 which is like 0.0016 seconds
-		TIMSK3 |= (1<<TOIE3); //enable overflow flag
+		//Timer interrupt initialization source: https://www.youtube.com/watch?v=5HgQkHzQc3o
+		TCNT3 = 65535 - (F_CPU/1024); // Where to calculate from
+		TCCR3B |= (1 << CS32) | (1 << CS30); //set the pre-scalar as 1024 which is like 0.0016 seconds
+		TCCR3A = 0; // Normal operation mode for timer
+		
+		sei();
 }
 
 ISR(INT0_vect)
@@ -338,20 +340,20 @@ ISR(INT0_vect)
 	}
 }
 
-ISR(TIMER3_OVF_vect){
-	g_timer_counter++;
-	// Check if 10 seconds have elapsed
-	if (g_timer_counter >= 6250) { // 10 seconds / 0.0016 seconds per tick (with prescaler of 1024)
-		printf("Time elapsed");
-		//Changing the state to activatebuzzer if 10 seconds have passed
-		g_state = ACTIVATE_BUZZER;
-		g_timer_counter = 0; // Reset timer counter
-	}
+// Run when overflow happens in timer, our case every second after movement in detected
+ISR (TIMER3_OVF_vect)
+{
 	
+	g_timer_counter++;
+	
+	if(g_timer_counter >= 10)
+	{
+		printf("10 seconds passed!\n\r");
+		TCNT3 = 65535 - (F_CPU/1024); // Resetting the register
+		g_timer_counter = 0;
+		g_state = ACTIVATE_BUZZER;
+	}
 }
-
-
-
 
 int main(void)
 {
@@ -372,10 +374,10 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	// Enable interrupts
-	sei();
 	
+	// Enable interrupts
 	Interrupt_init();
+	
 	
 	// The user input from keypad is appended to this char array
 	char user_input[CHAR_ARRAY_SIZE] = "\0";
@@ -408,8 +410,8 @@ int main(void)
 				send_command_to_slave("4");
 				send_command_to_slave("3>Enter Password:");
 								
-				//Starting the Timer
-				TCNT3 = 0;
+				//Starting the Timer (enable overflow comparison)
+				TIMSK3 |= (1<<TOIE3);
 				//Switching state to receive the password
 				g_state = KEYPAD_INPUT;
 				break;
@@ -420,16 +422,18 @@ int main(void)
 				
 			case ACTIVATE_BUZZER:
 				//Do something here to activate alarm in slave 
-				send_command_to_slave("");
+				printf("ALARM ON!");
 				break;
 				
 				
-			case DEACTIVATE_BUZZER:
+			case DEACTIVATE_TIMER:
 				
-				//TODO Maybe add the timer stopping here
-			
+				// Disable timer (disable overflow comparison)
+				TIMSK3 &= ~(1<<TOIE3);
+				
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
+				
 				_delay_ms(5000);
 				g_state = REARM;
 				break;
