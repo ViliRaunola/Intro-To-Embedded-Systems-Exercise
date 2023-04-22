@@ -28,7 +28,6 @@
 #define WAIT_MOVEMENT 0
 #define MOTION_DETECTED 1
 #define KEYPAD_INPUT 2
-#define ACTIVATE_BUZZER 3
 #define DEACTIVATE_TIMER 4
 #define REARM 5
 
@@ -48,8 +47,8 @@
 The state of Mega, used in the switch case structure. 
 Is initialized as waiting for movement.
 */
-int g_state = REARM; 
-int g_timer_counter = 0;
+volatile int g_state = REARM; 
+volatile int g_timer_counter = 0;
 
 
 /* USART_... Functions are for 
@@ -176,7 +175,7 @@ comparePassword(char *user_input)
 		_delay_ms(4000);
 		// Clearing the user input
 		user_input[0] = '\0';
-		g_state = DEACTIVATE_BUZZER;
+		g_state = DEACTIVATE_TIMER;
 	}
 }
 
@@ -324,14 +323,16 @@ void Interrupt_init(){
 		EICRA |= (1<<ISC01)|(1<<ISC00); //Set rising edge INT0
 		EIMSK |= (1<<INT0); //Enable INT0
 		
-		//Timer interrupt initialization source: https://www.youtube.com/watch?v=5HgQkHzQc3o
-		TCNT3 = 65535 - (F_CPU/1024); // Where to calculate from
-		TCCR3B |= (1 << CS32) | (1 << CS30); //set the pre-scalar as 1024 which is like 0.0016 seconds
+		//Timer interrupt initialization
+		// // Where to calculate from. Source: https://oscarliang.com/arduino-timer-and-interrupt-tutorial/
+		TCNT3 = 3036; //65535 - (16 000 000/256); 
+		TCCR3B |= (1 << CS32); //set the pre-scalar as 256
 		TCCR3A = 0; // Normal operation mode for timer
 		
 		sei();
 }
 
+// Triggered when sensor sees movement
 ISR(INT0_vect)
 {
 	if (g_state == WAIT_MOVEMENT){
@@ -343,15 +344,25 @@ ISR(INT0_vect)
 // Run when overflow happens in timer, our case every second after movement in detected
 ISR (TIMER3_OVF_vect)
 {
-	
 	g_timer_counter++;
 	
 	if(g_timer_counter >= 10)
 	{
-		printf("10 seconds passed!\n\r");
-		TCNT3 = 65535 - (F_CPU/1024); // Resetting the register
-		g_timer_counter = 0;
-		g_state = ACTIVATE_BUZZER;
+		// Disable timer (disable overflow comparison)
+		TIMSK3 &= ~(1<<TOIE3);
+		TCNT3 = 3036; // Resetting the register
+		g_timer_counter = 0; // Resetting the seconds
+		// Turning buzzer on
+		send_command_to_slave("1");
+	
+		// Informing the user
+		send_command_to_slave("4");	
+		send_command_to_slave("3>Alarm triggered");
+		_delay_ms(5000);
+		
+		// Informing user that they can keep giving the password
+		send_command_to_slave("4");
+		send_command_to_slave("3>Enter Password:");
 	}
 }
 
@@ -381,9 +392,6 @@ int main(void)
 	
 	// The user input from keypad is appended to this char array
 	char user_input[CHAR_ARRAY_SIZE] = "\0";
-	
-	// Clearing the screen
-	send_command_to_slave("4");
 	
     while (1) 
     {	
@@ -420,17 +428,12 @@ int main(void)
 				getPassword(user_input);
 				break;
 				
-			case ACTIVATE_BUZZER:
-				//Do something here to activate alarm in slave 
-				printf("ALARM ON!");
-				break;
-				
 				
 			case DEACTIVATE_TIMER:
 				
-				// Disable timer (disable overflow comparison)
-				TIMSK3 &= ~(1<<TOIE3);
-				
+				// Disabling buzzer if it has been triggered
+				send_command_to_slave("2");
+				// Sending message to user 
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
 				
