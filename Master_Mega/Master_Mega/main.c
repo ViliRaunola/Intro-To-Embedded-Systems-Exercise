@@ -318,20 +318,27 @@ askToRearm()
 }
 
 // Initializing the interrupt and timer
-void Interrupt_init(){
-	
+void 
+Interrupt_init()
+{
 		//Sensor interrupt - INT0 Pin 21
 		EICRA |= (1<<ISC01)|(1<<ISC00); //Set rising edge INT0
 		EIMSK |= (1<<INT0); //Enable INT0
 		
-		//Timer interrupt initialization
-		// // Where to calculate from. Source: https://oscarliang.com/arduino-timer-and-interrupt-tutorial/
-		TCNT3 = 3036; //65535 - (16 000 000/256); 
-		TCCR3B |= (1 << CS32); //set the pre-scalar as 256
-		TCCR3A = 0; // Normal operation mode for timer
-		
 		// Enabling interrupts
 		sei();
+}
+
+// Initializes and starts the 10s timer
+void start_timer()
+{
+	//Timer interrupt initialization
+	// // Where to calculate from. Source: https://oscarliang.com/arduino-timer-and-interrupt-tutorial/
+	TCNT3 = 3036; //65535 - (16 000 000/256);
+	TCCR3B |= (1 << CS32); //set the pre-scalar as 256
+	TCCR3A = 0; // Normal operation mode for timer
+	//Starting the Timer (enable overflow comparison)
+	TIMSK3 |= (1<<TOIE3);
 }
 
 // Triggered when sensor sees movement
@@ -352,7 +359,6 @@ ISR (TIMER3_OVF_vect)
 	{
 		// Disable timer (disable overflow comparison)
 		TIMSK3 &= ~(1<<TOIE3);
-		TCNT3 = 3036; // Resetting the register
 		g_timer_counter = 0; // Resetting the seconds
 		// Turning buzzer on
 		send_command_to_slave("1");
@@ -417,10 +423,11 @@ int main(void)
 				// Movement detected --> sending message to lcd
 				send_command_to_slave("4");
 				send_command_to_slave("3>Motion Detected!");
+				_delay_ms(100);
 				send_command_to_slave("5>Give pin in 10s");
-				//Starting the Timer (enable overflow comparison)
-				TIMSK3 |= (1<<TOIE3);
-				_delay_ms(3000);
+				start_timer();
+				// Showing the message for 2s to the user
+				_delay_ms(2000);
 				send_command_to_slave("4");
 				send_command_to_slave("3>Enter Password:");
 								
@@ -437,6 +444,7 @@ int main(void)
 				
 				// Disabling buzzer if it has been triggered
 				send_command_to_slave("2");
+				_delay_ms(100);
 				// Sending message to user 
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
