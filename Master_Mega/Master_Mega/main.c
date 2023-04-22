@@ -5,6 +5,8 @@
  * Author : Group 07
  */ 
 
+
+
 #define F_CPU 16000000UL
 #define FOSC 16000000UL
 #define BAUD 9600
@@ -12,7 +14,7 @@
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
 #define PIN_REQUIRED_LEN 3 // The length of the stored password - 1
-#define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
+#define MOTION_SENSOR_PIN PD0 //pin D21 (PD0) from Arduino Mega for sensor (Interrupt pin for sensor to wake Arduino from sleep)
 #define REARM_TIME 5
 
 
@@ -24,10 +26,12 @@
 
 /*Definitions to switch cases*/
 #define WAIT_MOVEMENT 0
-#define START_TIMER 1
+#define MOTION_DETECTED 1
 #define KEYPAD_INPUT 2
-#define STOP_TIMER 3
-#define REARM 4
+#define ACTIVATE_BUZZER 3
+#define DEACTIVATE_BUZZER 4
+#define REARM 5
+
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -37,9 +41,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <avr/sleep.h>
+#include <avr/interrupt.h>
 #include "keypad.h"
 
 
+
+//Setting the initial state of alarm
+int state = REARM; 
+int timer_flag = 0;
 
 
 /* USART_... Functions are for 
@@ -115,24 +124,24 @@ FILE uart_input = FDEV_SETUP_STREAM(NULL, USART_Receive, _FDEV_SETUP_READ);
 
 
 
-//Function for motion detection
-static void
-motionSense(int sensePin){
-	
-	int sensorState = 0; // current state of pin
-	
-	while(1){
-		
-		sensorState = (PINB & (1 << sensePin));
-		
-		if(sensorState != 0){
-			
-			printf("Motion Detected\n\r");
-			break;
-		}
-		sensorState = 0;
-	}
-}
+//Function for motion detection not needed anymore
+//static void
+//motionSense(int sensePin){
+	//
+	//int sensorState = 0; // current state of pin
+	//
+	//while(1){
+		//
+		//sensorState = (PINB & (1 << sensePin));
+		//
+		//if(sensorState != 0){
+			//
+			//printf("Motion Detected\n\r");
+			//break;
+		//}
+		//sensorState = 0;
+	//}
+//}
 
 /*
 Compares the user input after OK is pressed to the stored password.
@@ -156,12 +165,17 @@ comparePassword(char *user_input, int *state)
 	}else
 	{
 		printf("Passwords match!\n\r");
+		//If password is correct, it stops the timer
+		TCCR3B &= ~((1 << CS32) | (1 << CS31) | (1 << CS30));
+		TCNT3 = 0;
+		//timer_counter = 0;
+		
 		send_command_to_slave("4");
 		send_command_to_slave("3>Correct password");
 		_delay_ms(4000);
 		// Clearing the user input
 		user_input[0] = '\0';
-		*state = STOP_TIMER;
+		*state = DEACTIVATE_BUZZER;
 	}
 }
 
@@ -303,6 +317,40 @@ askToRearm(int *state)
 	}
 }
 
+void Interrupt_init(){
+	
+		//Sensor interrupt - INT0 Pin 21
+		EICRA |= (1<<ISC01)|(1<<ISC00); //Set rising edge INT0
+		EIMSK |= (1<<INT0); //Enable INT0
+		
+		//Timer interrupt
+		TCNT3 = 0;
+		TCCR3B |= (1<<CS32) | (1<<CS30); //set the pre-scalar as 1024 which is like 0.0016 seconds
+		TIMSK3 |= (1<<TOIE3); //enable overflow flag
+}
+
+ISR(INT0_vect)
+{
+	if (state == WAIT_MOVEMENT){
+		printf("Motion Detected");
+		state = MOTION_DETECTED;
+	}
+}
+
+ISR(TIMER3_OVF_vect){
+	static uint16_t timer_counter = 0;
+	timer_counter++;
+	// Check if 10 seconds have elapsed
+	if (timer_counter >= 6250) { // 10 seconds / 0.0016 seconds per tick (with prescaler of 1024)
+		printf("Time elapsed");
+		//Changing the state to activatebuzzer if 10 seconds have passed
+		state = ACTIVATE_BUZZER;
+		timer_counter = 0; // Reset timer counter
+	}
+	
+}
+
+
 
 
 int main(void)
@@ -312,6 +360,9 @@ int main(void)
 	stdout = &uart_output;
 	stdin = &uart_input;
 	
+	// Setting input from motion sensor
+	DDRD &= (0 << MOTION_SENSOR_PIN);
+		
 	// Setting SS, MOSI and SCL as outputs
 	DDRB |= (1 << PB0) | (1 << PB1) | (1 << PB2);
 	
@@ -321,9 +372,11 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	// Setting input from motion sensor
-	DDRB &= ~(1 << MOTION_SENSOR_PIN);
+	//Setting the Mega to sleep mode until motion sensor picks up movement
+	sei();
+	set_sleep_mode(SLEEP_MODE_IDLE);
 	
+	Interrupt_init();
 	/* 
 	The state of Mega, used in the switch case structure. 
 	Is initialized as waiting for movement.
@@ -341,29 +394,37 @@ int main(void)
 		switch(state)
 		{
 			case WAIT_MOVEMENT:
-				
 				// Updating LCD
 				send_command_to_slave("4");
-				send_command_to_slave("3>Alarm is on");
+				send_command_to_slave("3>I'm Waiting!!!");
 				
 				// Waiting for movement
-				motionSense(MOTION_SENSOR_PIN);
-				
-				// Movement detected --> sending message to lcd
-				send_command_to_slave("3>Give 4 digit pin");
-				
-				// Switching state to receive the password
-				state = KEYPAD_INPUT;
+				sleep_mode();
 				break;
 				
-			case START_TIMER:
+			case MOTION_DETECTED:
+				// Movement detected --> sending message to lcd
+				send_command_to_slave("3>Motion Detected...");
+				_delay_ms(1000);
+				send_command_to_slave("3>Enter Password");
+								
+				//Starting the Timer
+				TCNT3 = 0;
+				//Switching state to receive the password
+				state = KEYPAD_INPUT;
 				break;
 				
 			case KEYPAD_INPUT:
 				getPassword(user_input, &state);
 				break;
 				
-			case STOP_TIMER:
+			case ACTIVATE_BUZZER:
+				//Do something here to activate alarm in slave 
+				send_command_to_slave("");
+				break;
+				
+				
+			case DEACTIVATE_BUZZER:
 				
 				//TODO Maybe add the timer stopping here
 			
