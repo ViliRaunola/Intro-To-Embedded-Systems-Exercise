@@ -317,6 +317,7 @@ askToRearm()
 	}
 }
 
+// Initializing the interrupt and timer
 void Interrupt_init(){
 	
 		//Sensor interrupt - INT0 Pin 21
@@ -329,6 +330,7 @@ void Interrupt_init(){
 		TCCR3B |= (1 << CS32); //set the pre-scalar as 256
 		TCCR3A = 0; // Normal operation mode for timer
 		
+		// Enabling interrupts
 		sei();
 }
 
@@ -413,13 +415,15 @@ int main(void)
 				
 			case MOTION_DETECTED:
 				// Movement detected --> sending message to lcd
+				send_command_to_slave("4");
 				send_command_to_slave("3>Motion Detected!");
+				send_command_to_slave("5>Give pin in 10s");
+				//Starting the Timer (enable overflow comparison)
+				TIMSK3 |= (1<<TOIE3);
 				_delay_ms(3000);
 				send_command_to_slave("4");
 				send_command_to_slave("3>Enter Password:");
 								
-				//Starting the Timer (enable overflow comparison)
-				TIMSK3 |= (1<<TOIE3);
 				//Switching state to receive the password
 				g_state = KEYPAD_INPUT;
 				break;
