@@ -44,11 +44,12 @@
 #include <avr/interrupt.h>
 #include "keypad.h"
 
-
-
-//Setting the initial state of alarm
-int state = REARM; 
-int timer_flag = 0;
+/* 
+The state of Mega, used in the switch case structure. 
+Is initialized as waiting for movement.
+*/
+int g_state = REARM; 
+int g_timer_counter = 0;
 
 
 /* USART_... Functions are for 
@@ -148,7 +149,7 @@ Compares the user input after OK is pressed to the stored password.
 If the passwords match the state is switched.
 */
 void
-comparePassword(char *user_input, int *state)
+comparePassword(char *user_input)
 {
 	int compare_result;
 	
@@ -175,7 +176,7 @@ comparePassword(char *user_input, int *state)
 		_delay_ms(4000);
 		// Clearing the user input
 		user_input[0] = '\0';
-		*state = DEACTIVATE_BUZZER;
+		g_state = DEACTIVATE_BUZZER;
 	}
 }
 
@@ -216,7 +217,7 @@ removeLastChar(char *user_input, int *user_input_len)
 
 // Reads the pressed key and appends it to the user input
 void
-getPassword(char *user_input, int *state){
+getPassword(char *user_input){
 	
 	char key_pressed;
 	int user_input_len;
@@ -234,7 +235,7 @@ getPassword(char *user_input, int *state){
 	
 	if (key_pressed == OK_CHAR)
 	{
-		comparePassword(user_input, state);
+		comparePassword(user_input);
 	} 
 	// Checks if backspace is pressed and that from empty string a character cannot be deleted.
 	else if ( (key_pressed == BACKSPACE_CHAR) && (user_input_len > 0) )
@@ -264,7 +265,7 @@ If rearm is selected there is REARM_TIME to leave the area before the system is 
 If the shutdown is selected sleep mode for Uno and Mega is set to Power-down.
 */
 void
-askToRearm(int *state)
+askToRearm()
 {
 	char key_pressed;
 	
@@ -295,7 +296,7 @@ askToRearm(int *state)
 			send_command_to_slave(command_to_send);
 			_delay_ms(1000);	
 		}
-		*state = WAIT_MOVEMENT;
+		g_state = WAIT_MOVEMENT;
 		
 	} else if (key_pressed == POWER_OFF_CHAR)
 	{
@@ -331,21 +332,20 @@ void Interrupt_init(){
 
 ISR(INT0_vect)
 {
-	if (state == WAIT_MOVEMENT){
-		printf("Motion Detected");
-		state = MOTION_DETECTED;
+	if (g_state == WAIT_MOVEMENT){
+		printf("Motion Detected\n\r");
+		g_state = MOTION_DETECTED;
 	}
 }
 
 ISR(TIMER3_OVF_vect){
-	static uint16_t timer_counter = 0;
-	timer_counter++;
+	g_timer_counter++;
 	// Check if 10 seconds have elapsed
-	if (timer_counter >= 6250) { // 10 seconds / 0.0016 seconds per tick (with prescaler of 1024)
+	if (g_timer_counter >= 6250) { // 10 seconds / 0.0016 seconds per tick (with prescaler of 1024)
 		printf("Time elapsed");
 		//Changing the state to activatebuzzer if 10 seconds have passed
-		state = ACTIVATE_BUZZER;
-		timer_counter = 0; // Reset timer counter
+		g_state = ACTIVATE_BUZZER;
+		g_timer_counter = 0; // Reset timer counter
 	}
 	
 }
@@ -372,16 +372,10 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	//Setting the Mega to sleep mode until motion sensor picks up movement
+	// Enable interrupts
 	sei();
-	set_sleep_mode(SLEEP_MODE_IDLE);
 	
 	Interrupt_init();
-	/* 
-	The state of Mega, used in the switch case structure. 
-	Is initialized as waiting for movement.
-	*/
-	int state = REARM; 
 	
 	// The user input from keypad is appended to this char array
 	char user_input[CHAR_ARRAY_SIZE] = "\0";
@@ -391,31 +385,37 @@ int main(void)
 	
     while (1) 
     {	
-		switch(state)
+		switch(g_state)
 		{
 			case WAIT_MOVEMENT:
 				// Updating LCD
 				send_command_to_slave("4");
 				send_command_to_slave("3>I'm Waiting!!!");
 				
-				// Waiting for movement
-				sleep_mode();
+				// Power down until interrupt comes from motion sensor
+				// Setting the sleep mode for "Power-down"
+				SMCR |= (1 << SM1);
+				_delay_ms(100);
+				// Enabling sleep mode
+				SMCR |= (1 << SE);
+				sleep_cpu();
 				break;
 				
 			case MOTION_DETECTED:
 				// Movement detected --> sending message to lcd
-				send_command_to_slave("3>Motion Detected...");
-				_delay_ms(1000);
-				send_command_to_slave("3>Enter Password");
+				send_command_to_slave("3>Motion Detected!");
+				_delay_ms(3000);
+				send_command_to_slave("4");
+				send_command_to_slave("3>Enter Password:");
 								
 				//Starting the Timer
 				TCNT3 = 0;
 				//Switching state to receive the password
-				state = KEYPAD_INPUT;
+				g_state = KEYPAD_INPUT;
 				break;
 				
 			case KEYPAD_INPUT:
-				getPassword(user_input, &state);
+				getPassword(user_input);
 				break;
 				
 			case ACTIVATE_BUZZER:
@@ -431,11 +431,11 @@ int main(void)
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
 				_delay_ms(5000);
-				state = REARM;
+				g_state = REARM;
 				break;
 				
 			case REARM:
-				askToRearm(&state);
+				askToRearm();
 				break;
 				
 			default:
