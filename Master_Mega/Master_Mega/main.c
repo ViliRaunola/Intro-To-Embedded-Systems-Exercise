@@ -5,14 +5,16 @@
  * Author : Group 07
  */ 
 
+
+
 #define F_CPU 16000000UL
 #define FOSC 16000000UL
 #define BAUD 9600
 #define MYUBRR (FOSC/16/BAUD-1)
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
-#define PIN_REQUIRED_LEN 3 // The length of the stored password - 1
-#define MOTION_SENSOR_PIN PB4 //pin D10 (PB4) from Arduino Mega for sensor
+#define PIN_REQUIRED_LEN 10 // The length of max len for our user input
+#define MOTION_SENSOR_PIN PD0 //pin D21 (PD0) from Arduino Mega for sensor (Interrupt pin for sensor to wake Arduino from sleep)
 #define REARM_TIME 5
 
 
@@ -24,10 +26,11 @@
 
 /*Definitions to switch cases*/
 #define WAIT_MOVEMENT 0
-#define START_TIMER 1
+#define MOTION_DETECTED 1
 #define KEYPAD_INPUT 2
-#define STOP_TIMER 3
-#define REARM 4
+#define DEACTIVATE_TIMER 4
+#define REARM 5
+
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -37,9 +40,15 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <avr/sleep.h>
+#include <avr/interrupt.h>
 #include "keypad.h"
 
-
+/* 
+The state of Mega, used in the switch case structure. 
+Is initialized as waiting for movement.
+*/
+volatile int g_state = REARM; 
+volatile int g_timer_counter = 0;
 
 
 /* USART_... Functions are for 
@@ -114,32 +123,12 @@ FILE uart_output = FDEV_SETUP_STREAM(USART_Transmit, NULL, _FDEV_SETUP_WRITE);
 FILE uart_input = FDEV_SETUP_STREAM(NULL, USART_Receive, _FDEV_SETUP_READ);
 
 
-
-//Function for motion detection
-static void
-motionSense(int sensePin){
-	
-	int sensorState = 0; // current state of pin
-	
-	while(1){
-		
-		sensorState = (PINB & (1 << sensePin));
-		
-		if(sensorState != 0){
-			
-			printf("Motion Detected\n\r");
-			break;
-		}
-		sensorState = 0;
-	}
-}
-
 /*
 Compares the user input after OK is pressed to the stored password.
 If the passwords match the state is switched.
 */
 void
-comparePassword(char *user_input, int *state)
+comparePassword(char *user_input)
 {
 	int compare_result;
 	
@@ -156,12 +145,18 @@ comparePassword(char *user_input, int *state)
 	}else
 	{
 		printf("Passwords match!\n\r");
+		//If password is correct, it stops the timer
+		// Disable timer (disable overflow comparison)
+		TIMSK3 &= ~(1<<TOIE3);
+		g_timer_counter = 0;
+		
 		send_command_to_slave("4");
 		send_command_to_slave("3>Correct password");
-		_delay_ms(4000);
+		_delay_ms(100);
+		
 		// Clearing the user input
 		user_input[0] = '\0';
-		*state = STOP_TIMER;
+		g_state = DEACTIVATE_TIMER;
 	}
 }
 
@@ -202,7 +197,7 @@ removeLastChar(char *user_input, int *user_input_len)
 
 // Reads the pressed key and appends it to the user input
 void
-getPassword(char *user_input, int *state){
+getPassword(char *user_input){
 	
 	char key_pressed;
 	int user_input_len;
@@ -211,16 +206,22 @@ getPassword(char *user_input, int *state){
 	So it shows the user if they have pressed the key and how many characters they have inputted so far.*/
 	char stars_to_print_command[CHAR_ARRAY_SIZE] = "5>";
 	
+	// If there was user input left before alarm triggered, printing it to the user
+	user_input_len = strlen(user_input);
+	createUserInputString(stars_to_print_command, &user_input_len);
+	send_command_to_slave(stars_to_print_command);
+	_delay_ms(100);
+	
 	printf("Type password: ");
 	KEYPAD_Init();
 	key_pressed = KEYPAD_GetKey();
 	printf("%c\n\r", key_pressed);
 	
-	user_input_len = strlen(user_input);
+	
 	
 	if (key_pressed == OK_CHAR)
 	{
-		comparePassword(user_input, state);
+		comparePassword(user_input);
 	} 
 	// Checks if backspace is pressed and that from empty string a character cannot be deleted.
 	else if ( (key_pressed == BACKSPACE_CHAR) && (user_input_len > 0) )
@@ -230,10 +231,11 @@ getPassword(char *user_input, int *state){
 		user_input_len = strlen(user_input);
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
+		_delay_ms(100);
 	} 
 	/* Appending to the user input only if the length of the password is not exceeded 
 	and that the backspace button is not considered part of the password.*/
-	else if ( (user_input_len <= PIN_REQUIRED_LEN) && (key_pressed != '*') )
+	else if ( (user_input_len <= PIN_REQUIRED_LEN) && (key_pressed != BACKSPACE_CHAR) )
 	{
 		appendCharToCharArray(user_input, key_pressed);
 		printf("Current user input: %s\n\r", user_input);
@@ -241,6 +243,7 @@ getPassword(char *user_input, int *state){
 		user_input_len = strlen(user_input);
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
+		_delay_ms(100);
 	}
 }
 
@@ -250,7 +253,7 @@ If rearm is selected there is REARM_TIME to leave the area before the system is 
 If the shutdown is selected sleep mode for Uno and Mega is set to Power-down.
 */
 void
-askToRearm(int *state)
+askToRearm()
 {
 	char key_pressed;
 	
@@ -281,7 +284,7 @@ askToRearm(int *state)
 			send_command_to_slave(command_to_send);
 			_delay_ms(1000);	
 		}
-		*state = WAIT_MOVEMENT;
+		g_state = WAIT_MOVEMENT;
 		
 	} else if (key_pressed == POWER_OFF_CHAR)
 	{
@@ -303,7 +306,65 @@ askToRearm(int *state)
 	}
 }
 
+// Initializing the interrupt and timer
+void 
+Interrupt_init()
+{
+		//Sensor interrupt - INT0 Pin 21
+		EICRA |= (1<<ISC01)|(1<<ISC00); //Set rising edge INT0
+		EIMSK |= (1<<INT0); //Enable INT0
+		
+		// Enabling interrupts
+		sei();
+}
 
+// Initializes and starts the 10s timer
+void start_timer()
+{
+	//Timer interrupt initialization
+	TCCR3B = 0; // Resetting it
+	TCCR3A = 0; // Normal operation mode for timer
+	TCNT3 = 0;
+	// // Where to calculate from. Source: https://oscarliang.com/arduino-timer-and-interrupt-tutorial/
+	TCNT3 = 3036; //65535 - (16 000 000/256);
+	TCCR3B |= (1 << CS32); //set the pre-scalar as 256
+	//Starting the Timer (enable overflow comparison)
+	TIMSK3 |= (1<<TOIE3);
+}
+
+// Triggered when sensor sees movement
+ISR(INT0_vect)
+{
+	if (g_state == WAIT_MOVEMENT){
+		printf("Motion Detected\n\r");
+		g_state = MOTION_DETECTED;
+	}
+}
+
+// Run when overflow happens in timer, our case every second after movement in detected
+ISR (TIMER3_OVF_vect)
+{
+	g_timer_counter++;
+	printf("%d\n\r", g_timer_counter);
+	
+	if(g_timer_counter >= 10)
+	{
+		// Disable timer (disable overflow comparison)
+		TIMSK3 &= ~(1<<TOIE3);
+		g_timer_counter = 0; // Resetting the seconds
+		// Turning buzzer on
+		send_command_to_slave("1");
+		_delay_ms(100);
+		// Informing the user
+		send_command_to_slave("4");	
+		send_command_to_slave("3>Alarm triggered");
+		_delay_ms(5000);
+		
+		// Informing user that they can keep giving the password
+		send_command_to_slave("4");
+		send_command_to_slave("3>Enter Password:");
+	}
+}
 
 int main(void)
 {
@@ -312,6 +373,9 @@ int main(void)
 	stdout = &uart_output;
 	stdin = &uart_input;
 	
+	// Setting input from motion sensor
+	DDRD &= (0 << MOTION_SENSOR_PIN);
+		
 	// Setting SS, MOSI and SCL as outputs
 	DDRB |= (1 << PB0) | (1 << PB1) | (1 << PB2);
 	
@@ -321,60 +385,69 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
-	// Setting input from motion sensor
-	DDRB &= ~(1 << MOTION_SENSOR_PIN);
 	
-	/* 
-	The state of Mega, used in the switch case structure. 
-	Is initialized as waiting for movement.
-	*/
-	int state = REARM; 
+	// Enable interrupts
+	Interrupt_init();
+	
 	
 	// The user input from keypad is appended to this char array
 	char user_input[CHAR_ARRAY_SIZE] = "\0";
 	
-	// Clearing the screen
-	send_command_to_slave("4");
-	
     while (1) 
     {	
-		switch(state)
+		switch(g_state)
 		{
 			case WAIT_MOVEMENT:
-				
 				// Updating LCD
 				send_command_to_slave("4");
-				send_command_to_slave("3>Alarm is on");
+				send_command_to_slave("3>I'm Waiting!!!");
 				
-				// Waiting for movement
-				motionSense(MOTION_SENSOR_PIN);
-				
-				// Movement detected --> sending message to lcd
-				send_command_to_slave("3>Give 4 digit pin");
-				
-				// Switching state to receive the password
-				state = KEYPAD_INPUT;
+				// Power down until interrupt comes from motion sensor
+				// Setting the sleep mode for "Power-down"
+				SMCR |= (1 << SM1);
+				_delay_ms(100);
+				// Enabling sleep mode
+				SMCR |= (1 << SE);
+				sleep_cpu();
 				break;
 				
-			case START_TIMER:
+			case MOTION_DETECTED:
+				// Movement detected --> sending message to lcd
+				send_command_to_slave("4");
+				send_command_to_slave("3>Motion Detected!");
+				_delay_ms(100);
+				send_command_to_slave("5>Give pin in 10s");
+				start_timer();
+				// Showing the message for 2s to the user
+				_delay_ms(2000);
+				send_command_to_slave("4");
+				send_command_to_slave("3>Enter Password:");
+				_delay_ms(100);
+								
+				//Switching state to receive the password
+				g_state = KEYPAD_INPUT;
 				break;
 				
 			case KEYPAD_INPUT:
-				getPassword(user_input, &state);
+				getPassword(user_input);
 				break;
 				
-			case STOP_TIMER:
 				
-				//TODO Maybe add the timer stopping here
-			
+			case DEACTIVATE_TIMER:
+				
+				// Disabling buzzer if it has been triggered
+				send_command_to_slave("2");
+				_delay_ms(4000);
+				// Sending message to user 
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
+				
 				_delay_ms(5000);
-				state = REARM;
+				g_state = REARM;
 				break;
 				
 			case REARM:
-				askToRearm(&state);
+				askToRearm();
 				break;
 				
 			default:
