@@ -349,12 +349,12 @@ ISR (TIMER3_OVF_vect)
 	
 	if(g_timer_counter >= 10)
 	{
+		g_timer_counter = 0; // Resetting the seconds
 		// Disable timer (disable overflow comparison)
 		TIMSK3 &= ~(1<<TOIE3);
-		g_timer_counter = 0; // Resetting the seconds
 		// Turning buzzer on
 		send_command_to_slave("1");
-	
+		_delay_ms(100);
 		// Informing the user
 		send_command_to_slave("4");	
 		send_command_to_slave("3>Alarm triggered");
