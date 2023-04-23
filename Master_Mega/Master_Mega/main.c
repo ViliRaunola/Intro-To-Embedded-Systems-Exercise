@@ -13,7 +13,7 @@
 #define MYUBRR (FOSC/16/BAUD-1)
 #define CHAR_ARRAY_SIZE 40
 #define PASSWORD "1234"
-#define PIN_REQUIRED_LEN 3 // The length of the stored password - 1
+#define PIN_REQUIRED_LEN 10 // The length of max len for our user input
 #define MOTION_SENSOR_PIN PD0 //pin D21 (PD0) from Arduino Mega for sensor (Interrupt pin for sensor to wake Arduino from sleep)
 #define REARM_TIME 5
 
@@ -123,26 +123,6 @@ FILE uart_output = FDEV_SETUP_STREAM(USART_Transmit, NULL, _FDEV_SETUP_WRITE);
 FILE uart_input = FDEV_SETUP_STREAM(NULL, USART_Receive, _FDEV_SETUP_READ);
 
 
-
-//Function for motion detection not needed anymore
-//static void
-//motionSense(int sensePin){
-	//
-	//int sensorState = 0; // current state of pin
-	//
-	//while(1){
-		//
-		//sensorState = (PINB & (1 << sensePin));
-		//
-		//if(sensorState != 0){
-			//
-			//printf("Motion Detected\n\r");
-			//break;
-		//}
-		//sensorState = 0;
-	//}
-//}
-
 /*
 Compares the user input after OK is pressed to the stored password.
 If the passwords match the state is switched.
@@ -166,13 +146,14 @@ comparePassword(char *user_input)
 	{
 		printf("Passwords match!\n\r");
 		//If password is correct, it stops the timer
-		TCCR3B &= ~((1 << CS32) | (1 << CS31) | (1 << CS30));
-		TCNT3 = 0;
-		//timer_counter = 0;
+		// Disable timer (disable overflow comparison)
+		TIMSK3 &= ~(1<<TOIE3);
+		g_timer_counter = 0;
 		
 		send_command_to_slave("4");
 		send_command_to_slave("3>Correct password");
-		_delay_ms(4000);
+		_delay_ms(100);
+		
 		// Clearing the user input
 		user_input[0] = '\0';
 		g_state = DEACTIVATE_TIMER;
@@ -225,12 +206,18 @@ getPassword(char *user_input){
 	So it shows the user if they have pressed the key and how many characters they have inputted so far.*/
 	char stars_to_print_command[CHAR_ARRAY_SIZE] = "5>";
 	
+	// If there was user input left before alarm triggered, printing it to the user
+	user_input_len = strlen(user_input);
+	createUserInputString(stars_to_print_command, &user_input_len);
+	send_command_to_slave(stars_to_print_command);
+	_delay_ms(100);
+	
 	printf("Type password: ");
 	KEYPAD_Init();
 	key_pressed = KEYPAD_GetKey();
 	printf("%c\n\r", key_pressed);
 	
-	user_input_len = strlen(user_input);
+	
 	
 	if (key_pressed == OK_CHAR)
 	{
@@ -244,10 +231,11 @@ getPassword(char *user_input){
 		user_input_len = strlen(user_input);
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
+		_delay_ms(100);
 	} 
 	/* Appending to the user input only if the length of the password is not exceeded 
 	and that the backspace button is not considered part of the password.*/
-	else if ( (user_input_len <= PIN_REQUIRED_LEN) && (key_pressed != '*') )
+	else if ( (user_input_len <= PIN_REQUIRED_LEN) && (key_pressed != BACKSPACE_CHAR) )
 	{
 		appendCharToCharArray(user_input, key_pressed);
 		printf("Current user input: %s\n\r", user_input);
@@ -255,6 +243,7 @@ getPassword(char *user_input){
 		user_input_len = strlen(user_input);
 		createUserInputString(stars_to_print_command, &user_input_len);
 		send_command_to_slave(stars_to_print_command);
+		_delay_ms(100);
 	}
 }
 
@@ -333,10 +322,12 @@ Interrupt_init()
 void start_timer()
 {
 	//Timer interrupt initialization
+	TCCR3B = 0; // Resetting it
+	TCCR3A = 0; // Normal operation mode for timer
+	TCNT3 = 0;
 	// // Where to calculate from. Source: https://oscarliang.com/arduino-timer-and-interrupt-tutorial/
 	TCNT3 = 3036; //65535 - (16 000 000/256);
 	TCCR3B |= (1 << CS32); //set the pre-scalar as 256
-	TCCR3A = 0; // Normal operation mode for timer
 	//Starting the Timer (enable overflow comparison)
 	TIMSK3 |= (1<<TOIE3);
 }
@@ -354,6 +345,7 @@ ISR(INT0_vect)
 ISR (TIMER3_OVF_vect)
 {
 	g_timer_counter++;
+	printf("%d\n\r", g_timer_counter);
 	
 	if(g_timer_counter >= 10)
 	{
@@ -430,6 +422,7 @@ int main(void)
 				_delay_ms(2000);
 				send_command_to_slave("4");
 				send_command_to_slave("3>Enter Password:");
+				_delay_ms(100);
 								
 				//Switching state to receive the password
 				g_state = KEYPAD_INPUT;
@@ -444,7 +437,7 @@ int main(void)
 				
 				// Disabling buzzer if it has been triggered
 				send_command_to_slave("2");
-				_delay_ms(100);
+				_delay_ms(4000);
 				// Sending message to user 
 				send_command_to_slave("4");
 				send_command_to_slave("3>Alarm disarmed");
