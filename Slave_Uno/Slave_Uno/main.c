@@ -179,9 +179,9 @@ int main(void)
 	
 	/* 
 	Setting the right frequency for the buzzer.
-	Using 700 MHz, pre-scaler 1.
+	Using 500 MHz, pre-scaler 1.
 	*/
-	OCR1A = topCalculation(1, 700);
+	OCR1A = topCalculation(1, 500);
 	
     // Initializing the USART
 	USART_Init(MYUBRR);
@@ -244,8 +244,7 @@ int main(void)
 				break;
 				
 			default:
-				printf("Error\n\r");
-				// Add something
+				printf("Unknown state\n\r");
 				break;
 		}
 		

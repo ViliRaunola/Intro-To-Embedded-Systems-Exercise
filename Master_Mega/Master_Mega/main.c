@@ -16,6 +16,7 @@
 #define PIN_REQUIRED_LEN 10 // The length of max len for our user input
 #define MOTION_SENSOR_PIN PD0 //pin D21 (PD0) from Arduino Mega for sensor (Interrupt pin for sensor to wake Arduino from sleep)
 #define REARM_TIME 5
+#define TRIGGER_TIME 15
 
 
 /*Keypad button definitions*/
@@ -318,7 +319,7 @@ Interrupt_init()
 		sei();
 }
 
-// Initializes and starts the 10s timer
+// Initializes and starts the 1s timer
 void start_timer()
 {
 	//Timer interrupt initialization
@@ -341,13 +342,16 @@ ISR(INT0_vect)
 	}
 }
 
-// Run when overflow happens in timer, our case every second after movement in detected
+/* 
+Run when overflow happens in timer, our case every second after movement in detected
+*/
 ISR (TIMER3_OVF_vect)
 {
 	g_timer_counter++;
 	printf("%d\n\r", g_timer_counter);
 	
-	if(g_timer_counter >= 10)
+	// Comparing the timer counter if the trigger time has been exceeded
+	if(g_timer_counter >= TRIGGER_TIME)
 	{
 		// Disable timer (disable overflow comparison)
 		TIMSK3 &= ~(1<<TOIE3);
@@ -416,7 +420,7 @@ int main(void)
 				send_command_to_slave("4");
 				send_command_to_slave("3>Motion Detected!");
 				_delay_ms(100);
-				send_command_to_slave("5>Give pin in 10s");
+				send_command_to_slave("5>Give pin in 15s");
 				start_timer();
 				// Showing the message for 2s to the user
 				_delay_ms(2000);
@@ -451,7 +455,7 @@ int main(void)
 				break;
 				
 			default:
-				//add something here
+				printf("Unknown state\n\r");
 				break;
 		}
     }
