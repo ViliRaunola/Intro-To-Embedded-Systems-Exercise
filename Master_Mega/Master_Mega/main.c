@@ -50,7 +50,7 @@ Is initialized as waiting for movement.
 */
 volatile int g_state = REARM; 
 volatile int g_timer_counter = 0;
-
+char memory_variable[sizeof(PASSWORD)];
 
 /* USART_... Functions are for 
 communicating between the Arduino and the computer through the USB.
@@ -65,7 +65,8 @@ USART_Init( uint16_t ubrr)
 	/* Enable receiver and transmitter */
 	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
 	/* Set frame format: 8data, 2stop bit */
-	UCSR0C = (1<<USBS0)|(3<<UCSZ00);
+	UCSR0C = (1<<USBS0)|(3<<UCSZ00);
+
 }
 
 static void
@@ -132,8 +133,21 @@ void
 comparePassword(char *user_input)
 {
 	int compare_result;
+	//Receiving password from EEPROM
+	for (uint16_t address_index = 0; address_index < sizeof(memory_variable); address_index++)
+	{
+		while(EECR & (1 << 1))
+		{
+			/* wait for the previous write operation to end */
+		}
+		
+		EEAR  = address_index;
+		EECR |= 0x01; // enable EEPROM read
+		memory_variable[address_index] = EEDR;
+	}
 	
-	compare_result = strcmp(PASSWORD, user_input);
+	
+	compare_result = strcmp(memory_variable, user_input);
 	
 	if(compare_result)
 	{
@@ -389,6 +403,18 @@ int main(void)
 	// Set SPI clock to 1 MHz
 	SPCR |= (1 << SPR0);
 	
+	//Saving the password to EEPROM
+	for (uint16_t address_index = 0; address_index < sizeof(PASSWORD); address_index++)
+	{
+		while(EECR & (1 << 1))
+		{
+			/* wait for the previous write operation to end */
+		}
+		EEAR = address_index;
+		EEDR = PASSWORD[address_index];
+		EECR |= (1 << 2);
+		EECR |= (1 << 1);
+	}
 	
 	// Enable interrupts
 	Interrupt_init();
@@ -462,4 +488,3 @@ int main(void)
 }
 
 /*#########################################################EOF#########################################################*/
-
