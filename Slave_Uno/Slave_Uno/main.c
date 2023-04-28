@@ -20,6 +20,10 @@
 #define DISPLAY_SECOND_ROW 5
 #define POWER_OFF 6
 
+//Defining Pins
+//#define GREEN_LED PD0 //Pin 0 connected to Green LED
+//#define RED_LED PD1 //Pin 1 connected to Red LED
+#define BUZZER_PIN PB1
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -137,7 +141,7 @@ receive_command_from_mega(int *state, char *delimeter, char *payload)
 int main(void)
 {
 	// Pin 9 for buzzer
-	DDRB |= (1 << PB1);
+	DDRB |= (1 << BUZZER_PIN);
 	
 	// Setting MISO as output
 	DDRB |= (1 << PB4);
